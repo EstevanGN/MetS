@@ -1,9 +1,28 @@
-# install.packages("shiny")
-# install.packages("DT")     
-# install.packages("readr")
+# ___________________________________________________________________
+# Installing necessary libraries ------------------------------------
+# ___________________________________________________________________
+if(!require(shiny)){
+  install.packages("shiny")
+}
+if(!require(DT)){
+  install.packages("DT")
+}
+if(!require(readr)){
+  install.packages("readr")
+}
 
+
+
+# ___________________________________________________________________
+# Libraries ---------------------------------------------------------
+# ___________________________________________________________________
 library(shiny)    # basic for shiny apps
 library(DT)       # Output tables
 library(readr)    # Read big size files
 
+
+
+# ___________________________________________________________________
+# Execute App -------------------------------------------------------
+# ___________________________________________________________________
 runApp('app')

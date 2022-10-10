@@ -2,10 +2,10 @@
 
 This is a first version to explore matabolomics data. To execute, you need to install ***R*** on your computer.
 
-**\--\
-**Daniel Estevan Garcia Niño\
+\--\
+Daniel Estevan Garcia Niño\
 [*dgarcian\@unal.edu.co*](mailto:dgarcian@unal.edu.co)*\
-Estadístico.\
-Estudiante, Ciencias de la Computación.\
+Statistician.\
+Student, Computer Science.\
 Universidad Nacional De Colombia.\
 Sede Bogotá.*
