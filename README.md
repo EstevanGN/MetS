@@ -3,8 +3,8 @@
 This is a first version to explore matabolomics data. To execute, you need to:
 
 1.  Install ***R*** on your computer.
-2.  Download Metabolomics-search project from GitHub.
-3.  Open R program and set working directory in Metabolomics-search project folder.
+2.  Download Metabolomics-search project from GitHub and unzip it.
+3.  Open R program and set working directory in Metabolomics-search project unzipped folder.
 4.  Run in console: *source("init.R")* .
 
 \--\
