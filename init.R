@@ -10,15 +10,19 @@ if(!require(DT)){
 if(!require(readr)){
   install.packages("readr")
 }
+if(!require(tidyverse)){
+  install.packages("tidyverse")
+}
 
 
 
 # ___________________________________________________________________
 # Libraries ---------------------------------------------------------
 # ___________________________________________________________________
-library(shiny)    # basic for shiny apps
-library(DT)       # Output tables
-library(readr)    # Read big size files
+library(shiny)      # basic for shiny apps
+library(DT)         # Output tables
+library(readr)      # Read big size files
+library(tidyverse)  # %>% function
 
 
 
