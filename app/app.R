@@ -265,7 +265,7 @@ ui <- navbarPage("Metabolomics Search",
             textInput(
               "fragments", 
               h4("Fragments"), 
-              value = "138.09; 156.10"
+              value = "138,09; 156,10"
             )
           ),
           fluidRow(
@@ -468,7 +468,8 @@ server <- shinyServer(function(input, output) {
   )
   
   observeEvent(input$search, {
-    searchMol$frag <- as.numeric(strsplit(input$fragments, "; ")[[1]])
+    searchMol$frag <- as.numeric(gsub(",", ".", 
+                                      strsplit(input$fragments, "; ")[[1]]))
     
     searchMol$RT <- 
       possibleRT(data(), input$mzValue, input$mzInterval)
