@@ -204,25 +204,22 @@ ui <- navbarPage("Metabolomics Search",
     )
   ),
 
-  ## ________________________________________________________________
+
   ## Searching molecules section ------------------------------------
-  ## ________________________________________________________________
-  navbarMenu("Execute",
-             
-    tabPanel("Searching molecules",
+  navbarMenu("Searching molecules",
+
+    ### Only with m/z value section ---------------------------------
+    tabPanel("Only with m/z value",
       sidebarLayout(
-        ## ____________________________________________________________
-        ## Selection parameters ---------------------------------------
-        ## ____________________________________________________________
+        
         sidebarPanel(
           h2("Parameters"),
           p("Choose the values of every parameter to obtain 
             a metabolomic search. Maximum precision allowed 10^-5."),
           
           fluidRow(
-            ### _______________________________________________________
-            ### Mz value option ------------------------------------
-            ### _______________________________________________________
+            
+            #### Mz value option ------------------------------------
             column(
               5,
               numericInput(
@@ -235,9 +232,8 @@ ui <- navbarPage("Metabolomics Search",
               ),
             ),
             
-            ### _______________________________________________________
-            ### Mz Interval option ------------------------------------
-            ### _______________________________________________________
+
+            #### Mz Interval option ---------------------------------
             column(
               5,
               numericInput(
@@ -259,23 +255,21 @@ ui <- navbarPage("Metabolomics Search",
           ),
           
           fluidRow(
-            ### _______________________________________________________
-            ### Fragments option --------------------------------------
-            ### _______________________________________________________
+            #### Fragments option -----------------------------------
             textInput(
               "fragments", 
               h4("Fragments"), 
               value = "138,09; 156,10"
             )
           ),
+          
           fluidRow(
             p("Write down every possible fragment separated by ';'")
           ),
           
           fluidRow(
-            ### _______________________________________________________
-            ### Correlation option ------------------------------------
-            ### _______________________________________________________
+            
+            #### Correlation option ---------------------------------
             column(
               5,
               numericInput(
@@ -288,9 +282,7 @@ ui <- navbarPage("Metabolomics Search",
               ),
             ),
             
-            ### _______________________________________________________
-            ### Rt Interval option ------------------------------------
-            ### _______________________________________________________
+            #### Rt Interval option ---------------------------------
             column(
               5,
               numericInput(
@@ -309,9 +301,7 @@ ui <- navbarPage("Metabolomics Search",
               Rt value for create an interval of search.")
           ),
           
-          ### _________________________________________________________
-          ### Search button -------------------------------------------
-          ### _________________________________________________________
+          #### Search button ----------------------------------------
           fluidRow(
               actionButton(
                 "search", 
@@ -321,72 +311,72 @@ ui <- navbarPage("Metabolomics Search",
               )
           )
         ),
+        
         mainPanel(
-          ### _________________________________________________________
-          ### Best result table ---------------------------------------
-          ### _________________________________________________________
+          
+          #### Best result table ------------------------------------
           h1("Best result:"),
           DTOutput(
             "bestResult"
           ),
           
-          ### _________________________________________________________
-          ### Printing other results ----------------------------------
-          ### _________________________________________________________
+          #### Printing other results -------------------------------
           h2("Other results:"),
           verbatimTextOutput("summary")
         )
       )
     ),
   
-    tabPanel("Print specific RT",
-      sidebarLayout(
-        sidebarPanel(
-          h2("RT"),
-          p("choose between specific RT or an RT_id from the 
-            'Other Results' tab"),
-          
-          ### _________________________________________________________
-          ### RT value or RT_id ---------------------------------------
-          ### _________________________________________________________
-          radioButtons(
-            "RTorRT_id",
-            "Search by:",
-            c("RT" = "RT", 
-              "RT_id" = "RT_id"),
-            selected = NULL,
-            inline = TRUE
-          ),
-          
-          ### _________________________________________________________
-          ### RT value or RT_id value ---------------------------------
-          ### _________________________________________________________
-          numericInput(
-            "RTchoosedValue",
-            "Give a value",
-            value = NA,
-            min = 0,
-            step = 0.00001
-          ),
-          
-          ### _________________________________________________________
-          ### Print button --------------------------------------------
-          ### _________________________________________________________
-          actionButton(
-            "searchRT", 
-            "Print", 
-            icon("print"), 
-            style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
-          )
-          
-        ),
-        mainPanel(
-          h1("For print:"),
-          DTOutput(
-            "RTchoosed"
-          )
-        )
-      )
+    ### With m/z and RT values section ------------------------------
+    tabPanel("With m/z and RT values",
+             
+      #sidebarLayout(
+      #  sidebarPanel(
+      #    h2("RT"),
+      #    p("choose between specific RT or an RT_id from the 
+      #      'Other Results' tab"),
+      #    
+      #    ### _________________________________________________________
+      #    ### RT value or RT_id ---------------------------------------
+      #    ### _________________________________________________________
+      #    radioButtons(
+      #      "RTorRT_id",
+      #      "Search by:",
+      #      c("RT" = "RT", 
+      #        "RT_id" = "RT_id"),
+      #      selected = NULL,
+      #      inline = TRUE
+      #    ),
+      #    
+      #    ### _________________________________________________________
+      #    ### RT value or RT_id value ---------------------------------
+      #    ### _________________________________________________________
+      #    numericInput(
+      #      "RTchoosedValue",
+      #      "Give a value",
+      #      value = NA,
+      #      min = 0,
+      #      step = 0.00001
+      #    ),
+      #    
+      #    ### _________________________________________________________
+      #    ### Print button --------------------------------------------
+      #    ### _________________________________________________________
+      #    actionButton(
+      #      "searchRT", 
+      #      "Print", 
+      #      icon("print"), 
+      #      style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
+      #    )
+      #    
+      #  ),
+      #  mainPanel(
+      #    h1("For print:"),
+      #    DTOutput(
+      #      "RTchoosed"
+      #    )
+      #  )
+      #)
     )
   
   ),
