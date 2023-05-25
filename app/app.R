@@ -1,33 +1,30 @@
-# ___________________________________________________________________
-# Libraries ---------------------------------------------------------
-# ___________________________________________________________________
+# Libraries --------------------------------------------------------------------
 library(shiny)      # basic for shiny apps
 library(DT)         # Output tables
 library(readr)      # Read big size files
 library(tidyverse)  # %>% function
+# / ----------------------------------------------------------------------------
 
 
 
-# ___________________________________________________________________
-# Shiny options------------------------------------------------------
-# ___________________________________________________________________
+# Shiny options ----------------------------------------------------------------
 options(shiny.maxRequestSize=3000*1024^2)
+# / ----------------------------------------------------------------------------
 
 
 
-# ___________________________________________________________________
-# App functions -----------------------------------------------------
-# ___________________________________________________________________
+# App functions ----------------------------------------------------------------
 
-# Possible RTs from a specific mzValue:
+## Possible RTs from a specific mzValue ----------------------------------------
 possibleRT <- function(dataSamples, mz, interval){
   mzTarget <- dataSamples %>%
     filter(`m/z (positive ionization)` >= mz-interval, 
            `m/z (positive ionization)` <= mz+interval )
   return(data.frame(mzTarget)[,"RT..min."])
 }
+## / ---------------------------------------------------------------------------
 
-# With a specific RT searching all mz near (with correlation):
+## With a specific RT searching all mz near (with correlation) -----------------
 mzNear <- function(dataSamples, rt, interval, mz, cor){
   rtValue <- rt
   rtTarget <- dataSamples %>%
@@ -50,38 +47,40 @@ mzNear <- function(dataSamples, rt, interval, mz, cor){
   
   return(result)
 }
+## / ---------------------------------------------------------------------------
 
-# With a set of RTs, searching for the closer to mz fragments:
+## With a set of RTs, searching for the closer to mz fragments -----------------
 closerFragmentation <- 
   function(dataSamples, rtSet, interval, mz, cor, fragment){
-  distanceToFragments <- NULL
-  distance <- NULL
-  distanceTable <- matrix(0, length(rtSet), 3)
-  
-  for(i in 1:length(rtSet)){
+    distanceToFragments <- NULL
+    distance <- NULL
+    distanceTable <- matrix(0, length(rtSet), 3)
     
-    result <- mzNear(dataSamples, rtSet[i], interval, mz, cor)
-    for(j in 1:length(fragment)){
-      for(k in 1:dim(result)[1]){
-        distance[k] <- 
-          abs(result$m.z..positive.ionization.[k]-fragment[j])
+    for(i in 1:length(rtSet)){
+      
+      result <- mzNear(dataSamples, rtSet[i], interval, mz, cor)
+      for(j in 1:length(fragment)){
+        for(k in 1:dim(result)[1]){
+          distance[k] <- 
+            abs(result$m.z..positive.ionization.[k]-fragment[j])
+        }
+        distanceToFragments[j] <- min(distance)
+        distance <- NULL
       }
-      distanceToFragments[j] <- min(distance)
-      distance <- NULL
+      totalSum <- sum(distanceToFragments)
+      
+      distanceTable[i,] <- c(i, rtSet[i], totalSum)
     }
-    totalSum <- sum(distanceToFragments)
     
-    distanceTable[i,] <- c(i, rtSet[i], totalSum)
+    return(
+      data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
+                 "RT"=distanceTable[which.min(distanceTable[,3]),2],
+                 "distance"=distanceTable[which.min(distanceTable[,3]),3])
+    )
   }
-  
-  return(
-    data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
-               "RT"=distanceTable[which.min(distanceTable[,3]),2],
-               "distance"=distanceTable[which.min(distanceTable[,3]),3])
-  )
-}
+## / ---------------------------------------------------------------------------
 
-# print all possible tables with Rt near:
+## print all possible tables with Rt near --------------------------------------
 printResults <- function(dataSamples, rtSet, interval, mz, cor){
   
   for(i in 1:length(rtSet)){
@@ -92,47 +91,43 @@ printResults <- function(dataSamples, rtSet, interval, mz, cor){
       print(result)
       cat("\n\n")
     }
-  
+    
   }
   
 }
+## / ---------------------------------------------------------------------------
 
 
-# ___________________________________________________________________
-# User interface ----------------------------------------------------
-# ___________________________________________________________________
-ui <- navbarPage("Metabolomics Search",
-  
-  ## ________________________________________________________________
-  ## Upload data section --------------------------------------------
-  ## ________________________________________________________________
+
+
+# User interface ---------------------------------------------------------------
+ui <- navbarPage("Metabolomic Search",
+                 
+  ## Upload data section -------------------------------------------------------
   tabPanel("Upload Data",
     sidebarLayout(
       sidebarPanel(
+        
         h2("Metabolomic Data"),
         p("Choose your metabolomic data from a file with 
-        CSV format (only). Press ", 
+          CSV format (only). Press ", 
           strong("'Browse...'"), 
           " button to upload data. Soon more formats."),
         
-        ### _________________________________________________________
-        ### Collect file button -------------------------------------
-        ### _________________________________________________________
-        fileInput(
-          "file1", 
+        
+        ### Browse data button -------------------------------------------------
+        fileInput("file1", 
           h4("Choose CSV File"),
           accept = c("text/csv",
-                    "text/comma-separated-values,text/plain",
-                    ".csv")
+                     "text/comma-separated-values,text/plain",
+                     ".csv")
         ),
+        ### / ------------------------------------------------------------------
         
         
         fluidRow(
-          ### _______________________________________________________
-          ### Header option -----------------------------------------
-          ### _______________________________________________________
-          column(
-            5,
+          ### Header option ----------------------------------------------------
+          column(5,
             h4("Header"),
             checkboxInput(
               "header", 
@@ -140,57 +135,57 @@ ui <- navbarPage("Metabolomics Search",
               TRUE
             )
           ),
+          ### / ----------------------------------------------------------------
           
-          ### _______________________________________________________
-          ### Row start option --------------------------------------
-          ### _______________________________________________________
-          column(
-            5,
-            numericInput("rowStart", 
-                         h4("From row:"), 
-                         value = 1,
-                         min = 1)
+          
+          ### Row start option -------------------------------------------------
+          column(5,
+            numericInput(
+              "rowStart", 
+              h4("From row:"), 
+              value = 1,
+              min = 1)
           )
+          ### / -------------------------------------------------
         ),
+        
         
         fluidRow(
-          ### _______________________________________________________
-          ### Quote option ------------------------------------------
-          ### _______________________________________________________
-          column(
-            5,
-            radioButtons("quote", h4("Quote"),
-                         c(None="",
-                           "Double Quote"='"',
-                           "Single Quote"="'"),
-                         '"'),
+          ### Quote option -----------------------------------------------------
+          column(5,
+            radioButtons("quote", 
+              h4("Quote"),
+              c(None="",
+                "Double Quote"='"',
+                "Single Quote"="'"),
+              '"'),
           ),
-          
-          ### _______________________________________________________
-          ### Separator option --------------------------------------
-          ### _______________________________________________________
-          column(
-            5,
-            radioButtons("sep", h4("Separator"),
-                         c(Comma=",",
-                           Semicolon=";",
-                           Tab="\t"),
-                         ","),
+          ### / ----------------------------------------------------------------
+                 
+                 
+          ### Separator option -------------------------------------------------
+          column(5,
+            radioButtons("sep", 
+              h4("Separator"),
+              c(Comma=",",
+                Semicolon=";",
+                Tab="\t"),
+              ","),
           )
+          ### / ----------------------------------------------------------------
         ),
         
+        
         br(),
         br(),
         
-        ### _________________________________________________________
-        ### UNAL Logo -----------------------------------------------
-        ### _________________________________________________________
+        ### UNAL Logo ----------------------------------------------------------
         img(src = "logo_unal.png", height = 80, width = 200)
+        ### / ------------------------------------------------------------------
       ),
       
-      ### ___________________________________________________________
-      ### Present data uploaded -------------------------------------
-      ### ___________________________________________________________
+      
+      ### Present data uploaded ------------------------------------------------
       mainPanel(
         h1("Data Uploaded"),
         
@@ -201,28 +196,26 @@ ui <- navbarPage("Metabolomics Search",
           "dataSamples"
         )
       )
+      ### / --------------------------------------------------------------------
     )
   ),
-
-
-  ## Searching molecules section ------------------------------------
-  navbarMenu("Searching molecules",
-
-    ### Only with m/z value section ---------------------------------
+  
+  
+  ## Search for molecules section ----------------------------------------------
+  navbarMenu("Search",
+             
     tabPanel("Only with m/z value",
       sidebarLayout(
-        h1("Only with m/z value"),
-        
         sidebarPanel(
+          h1("Only with m/z value"),
           h2("Parameters"),
           p("Choose the values of every parameter to obtain 
             a metabolomic search. Maximum precision allowed 10^-5."),
+                          
           
           fluidRow(
-            
-            #### Mz value option ------------------------------------
-            column(
-              5,
+            ### M/z value option -----------------------------------------------
+            column(5,
               numericInput(
                 "mzValue",
                 h4("Mz Value:"),
@@ -232,11 +225,11 @@ ui <- navbarPage("Metabolomics Search",
                 value = 304.15
               ),
             ),
-            
-
-            #### Mz Interval option ---------------------------------
-            column(
-              5,
+            ### / --------------------------------------------------------------
+                            
+                            
+            ### M/z interval option ------------------------------------
+            column(5,
               numericInput(
                 "mzInterval",
                 h4("Mz Interval:"),
@@ -246,8 +239,10 @@ ui <- navbarPage("Metabolomics Search",
                 value = 0.01
               ),
             )
+            ### / --------------------------------------------------------------
           ),
           
+                          
           fluidRow(
             p("", em("Mz Interval"),": is the maximum distance allowed to 
               mz value for create an interval of search. I.e.", 
@@ -255,24 +250,26 @@ ui <- navbarPage("Metabolomics Search",
               the range of search for near values of targed mz.")
           ),
           
+          
           fluidRow(
-            #### Fragments option -----------------------------------
+            ### Fragments option -----------------------------------------------
             textInput(
               "fragments", 
               h4("Fragments"), 
               value = "138,09; 156,10"
             )
+            ### / --------------------------------------------------------------
           ),
+          
           
           fluidRow(
             p("Write down every possible fragment separated by ';'")
           ),
           
+          
           fluidRow(
-            
-            #### Correlation option ---------------------------------
-            column(
-              5,
+            ### Correlation option ---------------------------------------------
+            column(5,
               numericInput(
                 "correlationLevel",
                 h4("Correlation"),
@@ -282,10 +279,11 @@ ui <- navbarPage("Metabolomics Search",
                 value = 0.95
               ),
             ),
+            ### / --------------------------------------------------------------
             
-            #### Rt Interval option ---------------------------------
-            column(
-              5,
+            
+            ### RT Interval option ---------------------------------------------
+            column(5,
               numericInput(
                 "rtInterval",
                 h4("Rt Interval:"),
@@ -295,100 +293,103 @@ ui <- navbarPage("Metabolomics Search",
                 value = 0.01
               ),
             )
+            ### / --------------------------------------------------------------
           ),
+          
           
           fluidRow(
             p("", em("Rt Interval"),": is the maximum distance allowed to 
               Rt value for create an interval of search.")
           ),
           
-          #### Search button ----------------------------------------
+          
           fluidRow(
-              actionButton(
-                "search", 
-                "Search", 
-                icon("search"), 
-                style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
-              )
+            ### Search button --------------------------------------------------
+            actionButton(
+              "search", 
+              "Search", 
+              icon("search"), 
+              style="color: #DEEDCF; 
+                    background-color: #56B870; 
+                    border-color: #0A2F51"
+            )
+            ### / --------------------------------------------------------------
           )
         ),
         
+        
         mainPanel(
-          
-          #### Best result table ------------------------------------
+          ### Best result table ------------------------------------------------
           h1("Best result:"),
           DTOutput(
             "bestResult"
           ),
+          ### / ----------------------------------------------------------------
           
-          #### Printing other results -------------------------------
+          
+          ### Printing other results -------------------------------------------
           h2("Other results:"),
           verbatimTextOutput("summary")
+          ### / ----------------------------------------------------------------
         )
       )
     ),
-  
-    ### With m/z and RT values section ------------------------------
-    tabPanel("With m/z and RT values",
-             
-  
-      sidebarLayout(
-        sidebarPanel(
-          h2("RT"),
-          p("choose between specific RT or an RT_id from the 
-            'Other Results' tab"),
-          
-          ### _________________________________________________________
-          ### RT value or RT_id ---------------------------------------
-          ### _________________________________________________________
-          radioButtons(
-            "RTorRT_id",
-            "Search by:",
-            c("RT" = "RT", 
-              "RT_id" = "RT_id"),
-            selected = NULL,
-            inline = TRUE
-          ),
-          
-          ### _________________________________________________________
-          ### RT value or RT_id value ---------------------------------
-          ### _________________________________________________________
-          numericInput(
-            "RTchoosedValue",
-            "Give a value",
-            value = NA,
-            min = 0,
-            step = 0.00001
-          ),
-          
-          ### _________________________________________________________
-          ### Print button --------------------------------------------
-          ### _________________________________________________________
-          actionButton(
-            "searchRT", 
-            "Print", 
-            icon("print"), 
-            style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
-          )
-          
-        ),
-        mainPanel(
-          h1("For print:"),
-          DTOutput(
-            "RTchoosed"
-          )
-        )
-        
-      )
-    )
     
+    
+    tabPanel("With m/z and RT values",
+    #                  sidebarLayout(
+    #                    sidebarPanel(
+    #                      h2("RT"),
+    #                      p("choose between specific RT or an RT_id from the 
+    #        'Other Results' tab"),
+    #                      
+    #                      ### _________________________________________________________
+    #                      ### RT value or RT_id ---------------------------------------
+    #                      ### _________________________________________________________
+    #                      radioButtons(
+    #                        "RTorRT_id",
+    #                        "Search by:",
+    #                        c("RT" = "RT", 
+    #                          "RT_id" = "RT_id"),
+    #                        selected = NULL,
+    #                        inline = TRUE
+    #                      ),
+    #                      
+    #                      ### _________________________________________________________
+    #                      ### RT value or RT_id value ---------------------------------
+    #                      ### _________________________________________________________
+    #                      numericInput(
+    #                        "RTchoosedValue",
+    #                        "Give a value",
+    #                        value = NA,
+    #                        min = 0,
+    #                        step = 0.00001
+    #                      ),
+    #                      
+    #                      ### _________________________________________________________
+    #                      ### Print button --------------------------------------------
+    #                      ### _________________________________________________________
+    #                      actionButton(
+    #                        "searchRT", 
+    #                        "Print", 
+    #                        icon("print"), 
+    #                        style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
+    #                      )
+    #                      
+    #                    ),
+    #                    mainPanel(
+    #                      h1("For print:"),
+    #                      DTOutput(
+    #                        "RTchoosed"
+    #                      )
+    #                    )
+    #                  )
+    )
   ),
-
-  ## ________________________________________________________________
-  ## More info section ----------------------------------------------
-  ## ________________________________________________________________                 
+  
+  
+  ## More info section ---------------------------------------------------------
   tabPanel("Information",
-                            
     h1("Authors"),
     p("",
       strong("Daniel Estevan Garcia Niño"), br(),
@@ -399,15 +400,15 @@ ui <- navbarPage("Metabolomics Search",
       "Sede Bogotá."),
     
     br(),
-    
+           
     p("",
       strong("Federico Roda, PhD"), br(),
       "Max Planck Tandem Group Leader", br(),
       "Universidad Nacional de Colombia, Sede Bogotá", br(),
       "e-mail: frodaf@unal.edu.co"),
-    
+           
     br(),
-    
+           
     p("",
       strong("Liliana López Kleine"), br(),
       "Profesora titular", br(),
@@ -415,12 +416,14 @@ ui <- navbarPage("Metabolomics Search",
       "Departamento de estadística", br(),
       "Facultad de Ciencias", br(),
       "Universidad Nacional de Colombia - sede Bogotá"),
-    
+           
     h1("Help"),
     p("For more information:", 
-      a(href="https://github.com/EstevanGN/Metabolomics-search",
+      a(href="https://github.com/EstevanGN/Metabolomic-search",
         "GitHub repository"))
   )
+  ## / -------------------------------------------------------------------------
+
 )
 
 
@@ -437,10 +440,10 @@ server <- shinyServer(function(input, output) {
         input$rowStart)
     inFile <- input$file1
     df <- read_delim(inFile$datapath, 
-                   col_names = input$header, 
-                   delim = input$sep,
-                   quote = input$quote,
-                   skip = input$rowStart-1)
+                     col_names = input$header, 
+                     delim = input$sep,
+                     quote = input$quote,
+                     skip = input$rowStart-1)
     return(df)
   })
   
@@ -507,7 +510,6 @@ server <- shinyServer(function(input, output) {
   # _________________________________________________________________
   # Button RT print -------------------------------------------------
   # _________________________________________________________________
-  
   specificRT <- reactiveValues(RT = NULL)
   
   observeEvent(input$searchRT, {
