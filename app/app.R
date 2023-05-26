@@ -203,7 +203,8 @@ ui <- navbarPage("Metabolomic Search",
   
   ## Search for molecules section ----------------------------------------------
   navbarMenu("Search",
-             
+    
+    ### Only with m/z value ----------------------------------------------------
     tabPanel("Only with m/z value",
       sidebarLayout(
         sidebarPanel(
@@ -214,7 +215,7 @@ ui <- navbarPage("Metabolomic Search",
                           
           
           fluidRow(
-            ### M/z value option -----------------------------------------------
+            #### M/z value option ----------------------------------------------
             column(5,
               numericInput(
                 "mzValue",
@@ -225,10 +226,10 @@ ui <- navbarPage("Metabolomic Search",
                 value = 304.15
               ),
             ),
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
                             
                             
-            ### M/z interval option ------------------------------------
+            #### M/z interval option -------------------------------------------
             column(5,
               numericInput(
                 "mzInterval",
@@ -239,7 +240,7 @@ ui <- navbarPage("Metabolomic Search",
                 value = 0.01
               ),
             )
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
           ),
           
                           
@@ -252,13 +253,13 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            ### Fragments option -----------------------------------------------
+            #### Fragments option ----------------------------------------------
             textInput(
               "fragments", 
               h4("Fragments"), 
               value = "138,09; 156,10"
             )
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
           ),
           
           
@@ -268,7 +269,7 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            ### Correlation option ---------------------------------------------
+            #### Correlation option --------------------------------------------
             column(5,
               numericInput(
                 "correlationLevel",
@@ -279,10 +280,10 @@ ui <- navbarPage("Metabolomic Search",
                 value = 0.95
               ),
             ),
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
             
             
-            ### RT Interval option ---------------------------------------------
+            #### RT Interval option --------------------------------------------
             column(5,
               numericInput(
                 "rtInterval",
@@ -293,7 +294,7 @@ ui <- navbarPage("Metabolomic Search",
                 value = 0.01
               ),
             )
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
           ),
           
           
@@ -304,7 +305,7 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            ### Search button --------------------------------------------------
+            #### Search button -------------------------------------------------
             actionButton(
               "search", 
               "Search", 
@@ -313,30 +314,123 @@ ui <- navbarPage("Metabolomic Search",
                     background-color: #56B870; 
                     border-color: #0A2F51"
             )
-            ### / --------------------------------------------------------------
+            #### / -------------------------------------------------------------
           )
         ),
         
         
         mainPanel(
-          ### Best result table ------------------------------------------------
+          #### Best result table -----------------------------------------------
           h1("Best result:"),
           DTOutput(
             "bestResult"
           ),
-          ### / ----------------------------------------------------------------
+          #### / ---------------------------------------------------------------
           
           
-          ### Printing other results -------------------------------------------
+          #### Printing other results ------------------------------------------
           h2("Other results:"),
           verbatimTextOutput("summary")
-          ### / ----------------------------------------------------------------
+          #### / ---------------------------------------------------------------
         )
       )
     ),
     
     
+    ### With m/z and RT values -------------------------------------------------
     tabPanel("With m/z and RT values",
+      sidebarLayout(
+        sidebarPanel(
+          h1("With m/z and RT values"),
+          h2("Parameters"),
+          p("Choose the values of every parameter to obtain 
+            a metabolomic search. Maximum precision allowed 10^-5."),
+          
+          
+          fluidRow(
+            #### M/z value option ----------------------------------------------
+            column(5,
+              numericInput(
+                "mzValue_MZRT",
+                h4("Mz Value:"),
+                min = NA,
+                max = NA,
+                step = 0.00001,
+                value = 304.15
+              ),
+            ),
+            #### / -------------------------------------------------------------
+            
+            
+            #### Correlation option -------------------------------------------
+            column(5,
+              numericInput(
+                "correlationLevel_MZRT",
+                h4("Correlation"),
+                min = 0,
+                max = 1,
+                step = 0.00001,
+                value = 0.95
+              ),
+            ),
+            #### / -------------------------------------------------------------
+          ),
+          
+          
+          fluidRow(
+            #### RT value option -----------------------------------------------
+            column(5,
+              numericInput(
+                "rtValue_MZRT",
+                h4("Rt Value:"),
+                min = 0,
+                step = 0.00001,
+                value = 4.97
+              ),
+            ),
+            #### / -------------------------------------------------------------
+            
+            
+            #### RT Interval option --------------------------------------------
+            column(5,
+              numericInput(
+                "rtInterval_MZRT",
+                h4("Rt Interval:"),
+                min = 0.00001,
+                max = NA,
+                step = 0.00001,
+                value = 0.01
+              ),
+            )
+            #### / -------------------------------------------------------------
+          ),
+          
+          
+          fluidRow(
+            #### Second search button -------------------------------------------------
+            actionButton(
+              "search_MZRT", 
+              "Search", 
+              icon("search"), 
+              style="color: #DEEDCF; 
+                    background-color: #56B870; 
+                    border-color: #0A2F51"
+            )
+            #### / -------------------------------------------------------------
+          )
+          
+        ),
+        
+        
+        mainPanel(
+          #### Best result table -----------------------------------------------
+          h1("Best result:"),
+          DTOutput(
+            "bestResult_MZRT"
+          ),
+          #### / ---------------------------------------------------------------
+        )
+      )
     #                  sidebarLayout(
     #                    sidebarPanel(
     #                      h2("RT"),
@@ -428,15 +522,16 @@ ui <- navbarPage("Metabolomic Search",
 
 
 
-# ___________________________________________________________________
-# Server (functions) ------------------------------------------------
-# ___________________________________________________________________
+
+# Server (functions) -----------------------------------------------------------
 server <- shinyServer(function(input, output) {
-  # _________________________________________________________________
-  # Read data -------------------------------------------------------
-  # _________________________________________________________________
+  
+  ## Read sample data ------------------------------------------------------------------
   data <- reactive({
     req(input$file1,
+        input$header,
+        input$sep,
+        input$quote,
         input$rowStart)
     inFile <- input$file1
     df <- read_delim(inFile$datapath, 
@@ -446,38 +541,42 @@ server <- shinyServer(function(input, output) {
                      skip = input$rowStart-1)
     return(df)
   })
+  ## / -------------------------------------------------------------------------
   
-  # _________________________________________________________________
-  # Print data ------------------------------------------------------
-  # _________________________________________________________________
+  
+  ## Print sample data ---------------------------------------------------------
   output$dataSamples <- renderDT(
     data()
   )
+  ## / -------------------------------------------------------------------------
   
-  # _________________________________________________________________
-  # Button search ---------------------------------------------------
-  # _________________________________________________________________
+
+  ## First button search -------------------------------------------------------
+  # initialization of search parameters:
   searchMol <- reactiveValues(
     frag = NULL,
     RT = NULL,
     rtNear = NULL
   )
   
+  # action:
   observeEvent(input$search, {
+    # Obtain intervals:
     searchMol$frag <- as.numeric(gsub(",", ".", 
-                                      strsplit(input$fragments, "; ")[[1]]))
-    
+                                      strsplit(input$fragments, "; ")[[1]]
+                                      ))
+    # Obtain possible RTs:
     searchMol$RT <- 
       possibleRT(data(), input$mzValue, input$mzInterval)
     
+    # Obtain best RT:
     searchMol$rtNear <-
       closerFragmentation(data(), searchMol$RT, input$rtInterval, 
                           input$mzValue, input$correlationLevel, 
                           searchMol$frag)
     
-    # _______________________________________________________________
-    # Print Best table ----------------------------------------------
-    # _______________________________________________________________
+    
+    ### Print Best table -------------------------------------------------------
     output$bestResult  <- DT::renderDataTable(
       DT::datatable(
         { mzNear(
@@ -495,41 +594,36 @@ server <- shinyServer(function(input, output) {
                                          c(10,25,50,"All"))),
         
         class = "display"
-      ))
+      )
+    )
+    ### / ----------------------------------------------------------------------
     
-    # _______________________________________________________________
-    # Print possible tables -----------------------------------------
-    # _______________________________________________________________
+    
+    ### Print possible tables --------------------------------------------------
     output$summary <- renderPrint({
       printResults(data(), searchMol$RT, input$rtInterval, 
                    input$mzValue, input$correlationLevel)
     })
+    ### / ----------------------------------------------------------------------
     
   })
   
-  # _________________________________________________________________
-  # Button RT print -------------------------------------------------
-  # _________________________________________________________________
-  specificRT <- reactiveValues(RT = NULL)
   
-  observeEvent(input$searchRT, {
-    if(input$RTorRT_id == "RT"){
-      specificRT$RT <- input$RTchoosedValue
-    }else{
-      specificRT$RT <- searchMol$RT[input$RTchoosedValue]
-    }
+  ## Second button search ------------------------------------------------------
+  
+  # action:
+  observeEvent(input$search_MZRT, {
     
-    output$RTchoosed  <- DT::renderDataTable(
+    ### Print Best table -------------------------------------------------------
+    output$bestResult_MZRT  <- DT::renderDataTable(
       DT::datatable(
-        { 
-          mzNear(
-            data(),
-            specificRT$RT,
-            input$rtInterval, 
-            input$mzValue, 
-            input$correlationLevel
-          ) 
-        },
+        { mzNear(
+          data(),
+          input$rtValue_MZRT, 
+          input$rtInterval_MZRT, 
+          input$mzValue_MZRT, 
+          input$correlationLevel_MZRT
+        ) },
         
         extensions = 'Buttons',
         options = list(dom = 'Blfrtip',
@@ -538,14 +632,17 @@ server <- shinyServer(function(input, output) {
                                          c(10,25,50,"All"))),
         
         class = "display"
-      ))
+      )
+    )
+    ### / ----------------------------------------------------------------------
+    
   })
+  
   
 })
 
 
 
-# ___________________________________________________________________
-# Execute app -------------------------------------------------------
-# ___________________________________________________________________
+
+# Execute app ------------------------------------------------------------------
 shinyApp(ui = ui, server = server)
