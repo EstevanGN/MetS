@@ -431,54 +431,9 @@ ui <- navbarPage("Metabolomic Search",
           #### / ---------------------------------------------------------------
         )
       )
-    #                  sidebarLayout(
-    #                    sidebarPanel(
-    #                      h2("RT"),
-    #                      p("choose between specific RT or an RT_id from the 
-    #        'Other Results' tab"),
-    #                      
-    #                      ### _________________________________________________________
-    #                      ### RT value or RT_id ---------------------------------------
-    #                      ### _________________________________________________________
-    #                      radioButtons(
-    #                        "RTorRT_id",
-    #                        "Search by:",
-    #                        c("RT" = "RT", 
-    #                          "RT_id" = "RT_id"),
-    #                        selected = NULL,
-    #                        inline = TRUE
-    #                      ),
-    #                      
-    #                      ### _________________________________________________________
-    #                      ### RT value or RT_id value ---------------------------------
-    #                      ### _________________________________________________________
-    #                      numericInput(
-    #                        "RTchoosedValue",
-    #                        "Give a value",
-    #                        value = NA,
-    #                        min = 0,
-    #                        step = 0.00001
-    #                      ),
-    #                      
-    #                      ### _________________________________________________________
-    #                      ### Print button --------------------------------------------
-    #                      ### _________________________________________________________
-    #                      actionButton(
-    #                        "searchRT", 
-    #                        "Print", 
-    #                        icon("print"), 
-    #                        style="color: #DEEDCF; background-color: #56B870; border-color: #0A2F51"
-    #                      )
-    #                      
-    #                    ),
-    #                    mainPanel(
-    #                      h1("For print:"),
-    #                      DTOutput(
-    #                        "RTchoosed"
-    #                      )
-    #                    )
-    #                  )
     )
+    
+    
   ),
   
   
