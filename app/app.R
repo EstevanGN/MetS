@@ -108,7 +108,7 @@ ui <- navbarPage("Metabolomic Search",
     sidebarLayout(
       sidebarPanel(
         
-        h2("Metabolomic Data"),
+        h1("Metabolomic Data"),
         p("Choose your metabolomic data from a file with 
           CSV format (only). Press ", 
           strong("'Browse...'"), 
@@ -431,9 +431,95 @@ ui <- navbarPage("Metabolomic Search",
           #### / ---------------------------------------------------------------
         )
       )
+    ),
+    
+    
+    ### Several molecules ------------------------------------------------------
+    tabPanel("Several molecules",
+      sidebarLayout(
+        sidebarPanel(
+          
+          h1("Compound data"),
+          p("Choose your compound data from a file with 
+          CSV format (only). Press ", 
+            strong("'Browse...'"), 
+            " button to upload data. Soon more formats."),
+          
+          
+          #### Browse compound button ------------------------------------------
+          fileInput("compoundDataFile", 
+                    h4("Choose CSV File"),
+                    accept = c("text/csv",
+                               "text/comma-separated-values,text/plain",
+                               ".csv")
+          ),
+          #### / ---------------------------------------------------------------
+          
+          
+          fluidRow(
+            #### Header option -------------------------------------------------
+            column(5,
+                   h4("Header"),
+                   checkboxInput(
+                     "compundHeader", 
+                     "It has header", 
+                     TRUE
+                   )
+            ),
+            #### / -------------------------------------------------------------
+            
+            
+            #### Row start option ----------------------------------------------
+            column(5,
+                   numericInput(
+                     "compoundRowStart", 
+                     h4("From row:"), 
+                     value = 1,
+                     min = 1)
+            )
+            #### / -------------------------------------------------------------
+          ),
+          
+          
+          fluidRow(
+            #### Quote option --------------------------------------------------
+            column(5,
+                   radioButtons("compoundQuote", 
+                                h4("Quote"),
+                                c(None="",
+                                  "Double Quote"='"',
+                                  "Single Quote"="'"),
+                                '"'),
+            ),
+            #### / -------------------------------------------------------------
+            
+            
+            #### Decimal option ----------------------------------------------
+            column(5,
+                   radioButtons("compoundDec", 
+                                h4("Decimal style"),
+                                c(Comma=",",
+                                  Point="."),
+                                ","),
+            )
+            #### / -------------------------------------------------------------
+          ),
+        ),
+        
+        #### Present data uploaded --------------------------------------------- 
+        mainPanel(
+          h1("Data Uploaded"),
+          
+          br(),
+          br(),
+          
+          DTOutput(
+            "compoundData"
+          )
+        )
+        #### ------------------------------------------------------------------
+      )
     )
-    
-    
   ),
   
   
@@ -481,7 +567,7 @@ ui <- navbarPage("Metabolomic Search",
 # Server (functions) -----------------------------------------------------------
 server <- shinyServer(function(input, output) {
   
-  ## Read sample data ------------------------------------------------------------------
+  ## Read sample data ----------------------------------------------------------
   data <- reactive({
     req(input$file1,
         input$header,
@@ -502,6 +588,37 @@ server <- shinyServer(function(input, output) {
   ## Print sample data ---------------------------------------------------------
   output$dataSamples <- renderDT(
     data()
+  )
+  ## / -------------------------------------------------------------------------
+  
+  
+  ## Read compound data --------------------------------------------------------
+  compound_data <- reactive({
+    req(input$compoundDataFile,
+        input$compundHeader,
+        input$compoundDec,
+        input$compoundQuote,
+        input$compoundRowStart)
+    compoundInFile <- input$compoundDataFile
+    if( input$compoundDec=="," ){
+      compoundDf <- read.csv2(compoundInFile$datapath, 
+                              col_names = input$compundHeader,
+                              quote = input$compoundQuote,
+                              skip = input$compoundRowStart-1)
+    }else{
+      compoundDf <- read.csv(compoundInFile$datapath, 
+                             col_names = input$compundHeader,
+                             quote = input$compoundQuote,
+                             skip = input$compoundRowStart-1)
+    }
+    return(compoundDf)
+  })
+  ## / -------------------------------------------------------------------------
+  
+  
+  ## Print compound data -------------------------------------------------------
+  output$compoundData <- renderDT(
+    compound_data()
   )
   ## / -------------------------------------------------------------------------
   
@@ -593,6 +710,8 @@ server <- shinyServer(function(input, output) {
     
   })
   
+  
+  ## Read posible molecules ----------------------------------------------------
   
 })
 
