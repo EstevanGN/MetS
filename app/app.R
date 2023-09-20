@@ -102,101 +102,210 @@ printResults <- function(dataSamples, rtSet, interval, mz, cor){
 
 # User interface ---------------------------------------------------------------
 ui <- navbarPage("Metabolomic Search",
-                 
+  
   ## Upload data section -------------------------------------------------------
-  tabPanel("Upload Data",
-    sidebarLayout(
-      sidebarPanel(
-        
-        h1("Metabolomic Data"),
-        p("Choose your metabolomic data from a file with 
+  navbarMenu("Upload Data",
+             
+    ### Upload main data section -----------------------------------------------
+    tabPanel("Metabolomic Data",
+      sidebarLayout(
+        sidebarPanel(
+                          
+          h1("Metabolomic Data"),
+          p("Choose your metabolomic data from a file with 
           CSV format (only). Press ", 
           strong("'Browse...'"), 
           " button to upload data. Soon more formats."),
-        
-        
-        ### Browse data button -------------------------------------------------
-        fileInput("file1", 
-          h4("Choose CSV File"),
-          accept = c("text/csv",
-                     "text/comma-separated-values,text/plain",
-                     ".csv")
-        ),
-        ### / ------------------------------------------------------------------
-        
-        
-        fluidRow(
-          ### Header option ----------------------------------------------------
-          column(5,
-            h4("Header"),
-            checkboxInput(
-              "header", 
-              "It has header", 
-              TRUE
-            )
+                          
+          #### Browse data button ----------------------------------------------
+          fileInput("mainFile", 
+            h4("Choose CSV File:"),
+            accept = c("text/csv",
+                       "text/comma-separated-values,text/plain",
+                       ".csv")
           ),
-          ### / ----------------------------------------------------------------
+          #### / ---------------------------------------------------------------
+                          
+          fluidRow(
+            #### Header option -------------------------------------------------
+            column(5,
+              h4("Header:"),
+              checkboxInput(
+                "header", 
+                "It has header", 
+                TRUE
+              )
+            ),
+            #### / -------------------------------------------------------------
+            
+            #### Separator option ----------------------------------------------
+            column(5,
+              radioButtons("sep", 
+                h4("Separator character:"),
+                c("Semicolon"=";",
+                  "Space"=" ",
+                  "Comma"=",",
+                  "Tab"="\t",
+                  "Vertical Line |"="|"),
+                ","
+              ),
+            )
+            #### / -------------------------------------------------------------
+          ),
+                          
+          fluidRow(
+            #### Quote option --------------------------------------------------
+            column(5,
+              radioButtons("quote", 
+                h4("Quote:"),
+                c("None"="",
+                  "Double Quote"="\"",
+                  "Single Quote"="'"),
+                "\""
+              ),
+            ),
+            #### / -------------------------------------------------------------
+            
+            #### Decimal option ------------------------------------------------
+            column(5,
+              radioButtons("dec", 
+                h4("Decimal style:"),
+                c(Comma=",",
+                  Point="."),
+                "."
+              ),
+            )
+            #### / -------------------------------------------------------------
+          ),
           
-          
-          ### Row start option -------------------------------------------------
-          column(5,
+          fluidRow(
+            #### Row start option ----------------------------------------------
             numericInput(
               "rowStart", 
-              h4("From row:"), 
+              h4("Row to start:"), 
               value = 1,
-              min = 1)
-          )
-          ### / -------------------------------------------------
-        ),
-        
-        
-        fluidRow(
-          ### Quote option -----------------------------------------------------
-          column(5,
-            radioButtons("quote", 
-              h4("Quote"),
-              c(None="",
-                "Double Quote"='"',
-                "Single Quote"="'"),
-              '"'),
+              min = 1
+            )
+            #### / -------------------------------------------------------------
           ),
-          ### / ----------------------------------------------------------------
-                 
-                 
-          ### Separator option -------------------------------------------------
-          column(5,
-            radioButtons("sep", 
-              h4("Separator"),
-              c(Comma=",",
-                Semicolon=";",
-                Tab="\t"),
-              ","),
-          )
-          ### / ----------------------------------------------------------------
+                          
+          br(),
+          br(),
+                          
+          #### UNAL Logo -------------------------------------------------------
+          img(src = "logo_unal.png", height = 80, width = 200)
+          #### / ---------------------------------------------------------------
         ),
-        
-        
-        br(),
-        br(),
-        
-        ### UNAL Logo ----------------------------------------------------------
-        img(src = "logo_unal.png", height = 80, width = 200)
-        ### / ------------------------------------------------------------------
-      ),
-      
-      
-      ### Present data uploaded ------------------------------------------------
-      mainPanel(
-        h1("Data Uploaded"),
-        
-        br(),
-        br(),
-        
-        DTOutput(
-          "dataSamples"
+                        
+        #### Present data uploaded ---------------------------------------------
+        mainPanel(
+          h1("Data Uploaded"),
+          br(),
+          br(),
+          DTOutput(
+            "dataSamples"
+          )
         )
+        #### / -----------------------------------------------------------------
       )
-      ### / --------------------------------------------------------------------
+    ),
+    
+    ### Upload compound data ---------------------------------------------------
+    tabPanel("Compound Data",
+      sidebarLayout(
+        sidebarPanel(
+                 
+          h1("Compound Data"),
+          p("Choose your compound data from a file with 
+          CSV format (only). Press ", 
+          strong("'Browse...'"), 
+          " button to upload data. Soon more formats."),
+                 
+          #### Browse compound button ------------------------------------------
+          fileInput("compoundDataFile", 
+            h4("Choose CSV File:"),
+            accept = c("text/csv",
+                       "text/comma-separated-values,text/plain",
+                       ".csv"
+            )
+          ),
+          #### / ---------------------------------------------------------------
+                 
+          fluidRow(
+            #### Header option -------------------------------------------------
+            column(5,
+              h4("Header:"),
+              checkboxInput(
+                "compoundHeader", 
+                "It has header", 
+                TRUE
+              )
+            ),
+            #### / -------------------------------------------------------------
+            
+            
+            #### Separator option -------------------------------------
+            column(5,
+              radioButtons("compoundSeparator", 
+                h4("Separator character:"),
+                c("Semicolon"=";",
+                  "Space"=" ",
+                  "Comma"=",",
+                  "Tab"="\t",
+                  "Vertical Line |"="|"),
+                ";"
+              )
+            )
+            #### / -------------------------------------------------------------
+          ),
+                 
+          fluidRow(
+            #### Quote option --------------------------------------------------
+            column(5,
+              radioButtons("compoundQuote", 
+                h4("Quote:"),
+                c(None="",
+                  "Double Quote"="\"",
+                  "Single Quote"="'"),
+                "\""
+              ),
+            ),
+            #### / -------------------------------------------------------------
+            
+            #### Decimal option ------------------------------------------------
+            column(5,
+              radioButtons("compoundDec", 
+                h4("Decimal style:"),
+                c(Comma=",",
+                  Point="."),
+                ","
+              ),
+            )
+            #### / -------------------------------------------------------------
+          ),
+                 
+          fluidRow(
+            #### Row start option ----------------------------------------------
+            numericInput("compoundRowStart", 
+              h4("Row to start:"), 
+              value = 1,
+              min = 1
+            )
+            #### / -------------------------------------------------------------
+          ),
+        ),
+               
+        #### Present data uploaded --------------------------------------------- 
+        mainPanel(
+          h1("Data Uploaded"),
+          br(),
+          br(),
+          DTOutput(
+            "compoundData"
+          )
+        )
+        #### ------------------------------------------------------------------
+      )
     )
   ),
   
@@ -256,7 +365,7 @@ ui <- navbarPage("Metabolomic Search",
             #### Fragments option ----------------------------------------------
             textInput(
               "fragments", 
-              h4("Fragments"), 
+              h4("Fragments:"), 
               value = "138,09; 156,10"
             )
             #### / -------------------------------------------------------------
@@ -273,7 +382,7 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               numericInput(
                 "correlationLevel",
-                h4("Correlation"),
+                h4("Correlation:"),
                 min = 0,
                 max = 1,
                 step = 0.00001,
@@ -287,7 +396,7 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               numericInput(
                 "rtInterval",
-                h4("Rt Interval:"),
+                h4("RT Interval:"),
                 min = 0.00001,
                 max = NA,
                 step = 0.00001,
@@ -299,8 +408,8 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            p("", em("Rt Interval"),": is the maximum distance allowed to 
-              Rt value for create an interval of search.")
+            p("", em("RT Interval"),": is the maximum distance allowed to 
+              RT value for create an interval of search.")
           ),
           
           
@@ -431,94 +540,6 @@ ui <- navbarPage("Metabolomic Search",
           #### / ---------------------------------------------------------------
         )
       )
-    ),
-    
-    
-    ### Several molecules ------------------------------------------------------
-    tabPanel("Several molecules",
-      sidebarLayout(
-        sidebarPanel(
-          
-          h1("Compound data"),
-          p("Choose your compound data from a file with 
-          CSV format (only). Press ", 
-            strong("'Browse...'"), 
-            " button to upload data. Soon more formats."),
-          
-          
-          #### Browse compound button ------------------------------------------
-          fileInput("compoundDataFile", 
-                    h4("Choose CSV File"),
-                    accept = c("text/csv",
-                               "text/comma-separated-values,text/plain",
-                               ".csv")
-          ),
-          #### / ---------------------------------------------------------------
-          
-          
-          fluidRow(
-            #### Header option -------------------------------------------------
-            column(5,
-                   h4("Header"),
-                   checkboxInput(
-                     "compundHeader", 
-                     "It has header", 
-                     TRUE
-                   )
-            ),
-            #### / -------------------------------------------------------------
-            
-            
-            #### Row start option ----------------------------------------------
-            column(5,
-                   numericInput(
-                     "compoundRowStart", 
-                     h4("From row:"), 
-                     value = 1,
-                     min = 1)
-            )
-            #### / -------------------------------------------------------------
-          ),
-          
-          
-          fluidRow(
-            #### Quote option --------------------------------------------------
-            column(5,
-                   radioButtons("compoundQuote", 
-                                h4("Quote"),
-                                c(None="",
-                                  "Double Quote"='"',
-                                  "Single Quote"="'"),
-                                '"'),
-            ),
-            #### / -------------------------------------------------------------
-            
-            
-            #### Decimal option ----------------------------------------------
-            column(5,
-                   radioButtons("compoundDec", 
-                                h4("Decimal style"),
-                                c(Comma=",",
-                                  Point="."),
-                                ","),
-            )
-            #### / -------------------------------------------------------------
-          ),
-        ),
-        
-        #### Present data uploaded --------------------------------------------- 
-        mainPanel(
-          h1("Data Uploaded"),
-          
-          br(),
-          br(),
-          
-          DTOutput(
-            "compoundData"
-          )
-        )
-        #### ------------------------------------------------------------------
-      )
     )
   ),
   
@@ -569,12 +590,12 @@ server <- shinyServer(function(input, output) {
   
   ## Read sample data ----------------------------------------------------------
   data <- reactive({
-    req(input$file1,
+    req(input$mainFile,
         input$header,
         input$sep,
         input$quote,
         input$rowStart)
-    inFile <- input$file1
+    inFile <- input$mainFile
     df <- read_delim(inFile$datapath, 
                      col_names = input$header, 
                      delim = input$sep,
@@ -595,23 +616,24 @@ server <- shinyServer(function(input, output) {
   ## Read compound data --------------------------------------------------------
   compound_data <- reactive({
     req(input$compoundDataFile,
-        input$compundHeader,
-        input$compoundDec,
+        input$compoundHeader,
+        input$compoundSeparator,
         input$compoundQuote,
+        input$compoundDec,
         input$compoundRowStart)
+    
     compoundInFile <- input$compoundDataFile
-    if( input$compoundDec=="," ){
-      compoundDf <- read.csv2(compoundInFile$datapath, 
-                              col_names = input$compundHeader,
-                              quote = input$compoundQuote,
-                              skip = input$compoundRowStart-1)
-    }else{
-      compoundDf <- read.csv(compoundInFile$datapath, 
-                             col_names = input$compundHeader,
-                             quote = input$compoundQuote,
-                             skip = input$compoundRowStart-1)
-    }
-    return(compoundDf)
+    
+    compoundDF <- read.table(
+      compoundInFile$datapath,
+      header = input$compoundHeader,
+      sep = input$compoundSeparator,
+      quote = input$compoundQuote,
+      dec = input$compoundDec,
+      skip = input$compoundRowStart-1
+    )
+    
+    return(compoundDF)
   })
   ## / -------------------------------------------------------------------------
   
