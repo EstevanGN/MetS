@@ -95,9 +95,10 @@ closerFragmentation <- function(
     sampColumn,
     fragment
 ){
+  distanceTable <- matrix(0, length(rtSet), 3)
   
   if("" %in% fragment){
-    distanceTable <- matrix(0, length(rtSet), 3)
+    # If there are no fragments
     
     for(i in 1:length(rtSet)){
       result <- mzNear(
@@ -112,19 +113,12 @@ closerFragmentation <- function(
         sampColumn
       )
       
-      idMz <- result$Corr == 1
-      totalSum <- abs(result[idMz,2] - mz)
+      totalSum <- min(abs(result[,2] - mz))
       distanceTable[i,] <- c(i, rtSet[i], totalSum)
     }
     
-    return(
-      data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
-                 "RT"=distanceTable[which.min(distanceTable[,3]),2],
-                 "distance"=distanceTable[which.min(distanceTable[,3]),3])
-    )
-    
   }else{
-    distanceTable <- matrix(0, length(rtSet), 3)
+    # If there are fragments
     
     for(i in 1:length(rtSet)){
       result <- mzNear(
@@ -143,13 +137,13 @@ closerFragmentation <- function(
       
       distanceTable[i,] <- c(i, rtSet[i], totalSum)
     }
-    
-    return(
-      data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
-                 "RT"=distanceTable[which.min(distanceTable[,3]),2],
-                 "distance"=distanceTable[which.min(distanceTable[,3]),3])
-    )
   }
+  
+  return(
+    data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
+               "RT"=distanceTable[which.min(distanceTable[,3]),2],
+               "distance"=distanceTable[which.min(distanceTable[,3]),3])
+  )
 }
 ## / ---------------------------------------------------------------------------
 
@@ -180,12 +174,18 @@ printResults <- function(
   for(i in 1:length(rtSet)){
     partialResult <- mzNear(dataSamples, rowColumn, rtSet[i], rtColumn, 
                             interval, mz, mzColumn, cor, sampColumn)
-    
     group <- rep(i, nrow(partialResult))
-    sco <- rep( 
-      fragDistance(partialResult, fragment), 
-      nrow(partialResult)
-    )
+    if("" %in% fragment){
+      sco <- rep( 
+        min(abs(partialResult[,2] - mz)), 
+        nrow(partialResult)
+      )
+    }else{
+      sco <- rep( 
+        fragDistance(partialResult, fragment), 
+        nrow(partialResult)
+      )
+    }
     parental <- rep(rtSet[i], nrow(partialResult))
     
     completeResults <- rbind(
@@ -832,7 +832,7 @@ server <- shinyServer(function(input, output) {
     
     # Obtain intervals:
     if(input$fragments == ""){
-      searchMol$frag <- "No_fragments"
+      searchMol$frag <- c("")
     }else{
       searchMol$frag <- as.numeric(gsub(",", ".", 
                                         strsplit(input$fragments, "-")[[1]]
