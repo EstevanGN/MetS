@@ -13,16 +13,20 @@ if(!require(readr)){
 if(!require(tidyverse)){
   install.packages("tidyverse")
 }
+if(!require(shinyvalidate)){
+  install.packages("shinyvalidate")
+}
 
 
 
 # ___________________________________________________________________
 # Libraries ---------------------------------------------------------
 # ___________________________________________________________________
-library(shiny)      # basic for shiny apps
-library(DT)         # Output tables
-library(readr)      # Read big size files
-library(tidyverse)  # %>% function
+library(shiny)          # basic for shiny apps
+library(DT)             # Output tables
+library(readr)          # Read big size files
+library(tidyverse)      # %>% function
+library(shinyvalidate)  # Input validation 
 
 
 

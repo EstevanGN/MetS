@@ -1,8 +1,9 @@
 # Libraries --------------------------------------------------------------------
-library(shiny)      # basic for shiny apps
-library(DT)         # Output tables
-library(readr)      # Read big size files
-library(tidyverse)  # %>% function
+library(shiny)          # basic for shiny apps
+library(DT)             # Output tables
+library(readr)          # Read big size files
+library(tidyverse)      # %>% function
+library(shinyvalidate)  # Input validation 
 # / ----------------------------------------------------------------------------
 
 
@@ -16,58 +17,129 @@ options(shiny.maxRequestSize=3000*1024^2)
 # App functions ----------------------------------------------------------------
 
 ## Possible RTs from a specific mzValue ----------------------------------------
-possibleRT <- function(dataSamples, mz, interval){
+possibleRT <- function(dataSamples, mzColumn, rtColumn, mz, interval){
   mzTarget <- dataSamples %>%
-    filter(`m/z (positive ionization)` >= mz-interval, 
-           `m/z (positive ionization)` <= mz+interval )
-  return(data.frame(mzTarget)[,"RT..min."])
+    filter(dataSamples[,mzColumn] >= mz-interval, 
+           dataSamples[,mzColumn] <= mz+interval)
+  return(data.frame(mzTarget)[,rtColumn])
 }
 ## / ---------------------------------------------------------------------------
 
 ## With a specific RT searching all mz near (with correlation) -----------------
-mzNear <- function(dataSamples, rt, interval, mz, cor){
-  rtValue <- rt
-  rtTarget <- dataSamples %>%
-    filter(`RT (min)` >= rtValue-interval, 
-           `RT (min)` <= rtValue+interval )
-  MatrixRT <- as.matrix(t(rtTarget[,5:dim(dataSamples)[2]]))
+mzNear <- function(
+    dataSamples, 
+    rowColumn, 
+    rt, 
+    rtColumn, 
+    interval, 
+    mz, 
+    mzColumn, 
+    cor, 
+    sampColumn
+){
   
-  id_mzValue <- which.min(
-    abs(rtTarget$`m/z (positive ionization)` - mz)
+  samColumns <- as.numeric(
+    strsplit(sampColumn, "-")[[1]]
   )
   
-  idCorrelation <- cor(MatrixRT, method="pearson")[id_mzValue,] > cor
+  rtTarget <- dataSamples %>%
+    filter(dataSamples[,rtColumn] >= rt-interval, 
+           dataSamples[,rtColumn] <= rt+interval )
+  
+  matrixRT <- as.matrix(t(rtTarget[,samColumns[1]:samColumns[2]]))
+  
+  idMzValue <- which.min(
+    abs(rtTarget[,mzColumn] - mz)
+  )
+  
+  idCorrelation <- cor(matrixRT, method="pearson")[idMzValue,] > cor
   
   result <- cbind(
     data.frame(
       rtTarget[idCorrelation,]
-    )[,c(1,3,4)],
-    "Corr"=cor(MatrixRT, method="pearson")[id_mzValue,][idCorrelation]
+    )[,c(rowColumn, mzColumn, rtColumn)],
+    "Corr"=cor(matrixRT, method="pearson")[idMzValue,][idCorrelation]
   )
   
   return(result)
 }
 ## / ---------------------------------------------------------------------------
 
-## With a set of RTs, searching for the closer to mz fragments -----------------
-closerFragmentation <- 
-  function(dataSamples, rtSet, interval, mz, cor, fragment){
-    distanceToFragments <- NULL
+## With a table from mzNear calculate distance to fragments --------------------
+fragDistance <- function(result, fragment){
+  distanceToFragments <- NULL
+  distance <- NULL
+  
+  for(j in 1:length(fragment)){
+    for(k in 1:dim(result)[1]){
+      distance[k] <- 
+        abs(result[k,2]-fragment[j])
+    }
+    distanceToFragments[j] <- min(distance)
     distance <- NULL
+  }
+  return( sum(distanceToFragments) )
+}
+## / ---------------------------------------------------------------------------
+
+## With a set of RTs, searching for the closer to mz fragments -----------------
+closerFragmentation <- function(
+    dataSamples,
+    rowColumn,
+    rtSet,
+    rtColumn,
+    interval, 
+    mz, 
+    mzColumn,
+    cor, 
+    sampColumn,
+    fragment
+){
+  
+  if("" %in% fragment){
     distanceTable <- matrix(0, length(rtSet), 3)
     
     for(i in 1:length(rtSet)){
+      result <- mzNear(
+        dataSamples,
+        rowColumn,
+        rtSet[i],
+        rtColumn,
+        interval, 
+        mz,
+        mzColumn,
+        cor,
+        sampColumn
+      )
       
-      result <- mzNear(dataSamples, rtSet[i], interval, mz, cor)
-      for(j in 1:length(fragment)){
-        for(k in 1:dim(result)[1]){
-          distance[k] <- 
-            abs(result$m.z..positive.ionization.[k]-fragment[j])
-        }
-        distanceToFragments[j] <- min(distance)
-        distance <- NULL
-      }
-      totalSum <- sum(distanceToFragments)
+      idMz <- result$Corr == 1
+      totalSum <- abs(result[idMz,2] - mz)
+      distanceTable[i,] <- c(i, rtSet[i], totalSum)
+    }
+    
+    return(
+      data.frame("RT_id"=distanceTable[which.min(distanceTable[,3]),1],
+                 "RT"=distanceTable[which.min(distanceTable[,3]),2],
+                 "distance"=distanceTable[which.min(distanceTable[,3]),3])
+    )
+    
+  }else{
+    distanceTable <- matrix(0, length(rtSet), 3)
+    
+    for(i in 1:length(rtSet)){
+      result <- mzNear(
+        dataSamples,
+        rowColumn,
+        rtSet[i],
+        rtColumn,
+        interval, 
+        mz,
+        mzColumn,
+        cor,
+        sampColumn
+      )
+      
+      totalSum <- fragDistance(result, fragment)
       
       distanceTable[i,] <- c(i, rtSet[i], totalSum)
     }
@@ -78,22 +150,51 @@ closerFragmentation <-
                  "distance"=distanceTable[which.min(distanceTable[,3]),3])
     )
   }
+}
 ## / ---------------------------------------------------------------------------
 
-## print all possible tables with Rt near --------------------------------------
-printResults <- function(dataSamples, rtSet, interval, mz, cor){
+## Print all possible tables with Rt near --------------------------------------
+printResults <- function(
+    dataSamples,
+    rowColumn,
+    rtSet,
+    rtColumn,
+    interval, 
+    mz, 
+    mzColumn,
+    cor,
+    sampColumn,
+    fragment
+){
+  
+  completeResults <- data.frame(
+    "Group_id" = character(0),
+    "Score" = numeric(0),
+    "Parental_RT" = numeric(0),
+    "Row_names" = character(0),
+    "mz" = numeric(0),
+    "RT" = numeric(0),
+    "Correlation" = numeric(0)
+  )
   
   for(i in 1:length(rtSet)){
+    partialResult <- mzNear(dataSamples, rowColumn, rtSet[i], rtColumn, 
+                            interval, mz, mzColumn, cor, sampColumn)
     
-    result <- mzNear(dataSamples, rtSet[i], interval, mz, cor)
-    if(dim(result)[1]>1){
-      cat("rt_id:", i, " rtValue:", rtSet[i], "\n")
-      print(result)
-      cat("\n\n")
-    }
+    group <- rep(i, nrow(partialResult))
+    sco <- rep( 
+      fragDistance(partialResult, fragment), 
+      nrow(partialResult)
+    )
+    parental <- rep(rtSet[i], nrow(partialResult))
     
+    completeResults <- rbind(
+      completeResults,
+      cbind(group, sco, parental, partialResult)
+    )
   }
   
+  return(completeResults)
 }
 ## / ---------------------------------------------------------------------------
 
@@ -112,14 +213,19 @@ ui <- navbarPage("Metabolomic Search",
         sidebarPanel(
                           
           h1("Metabolomic Data"),
+          
+          br(),
+          
+          h2("General configuration "),
+          
           p("Choose your metabolomic data from a file with 
           CSV format (only). Press ", 
           strong("'Browse...'"), 
-          " button to upload data. Soon more formats."),
+          " button to upload data."),
                           
           #### Browse data button ----------------------------------------------
           fileInput("mainFile", 
-            h4("Choose CSV File:"),
+            h4("Choose CSV File"),
             accept = c("text/csv",
                        "text/comma-separated-values,text/plain",
                        ".csv")
@@ -138,16 +244,15 @@ ui <- navbarPage("Metabolomic Search",
             ),
             #### / -------------------------------------------------------------
             
-            #### Separator option ----------------------------------------------
-            column(5,
-              radioButtons("sep", 
-                h4("Separator character:"),
-                c("Semicolon"=";",
-                  "Space"=" ",
-                  "Comma"=",",
-                  "Tab"="\t",
-                  "Vertical Line |"="|"),
-                ","
+            #### Decimal option ------------------------------------------------
+            column(
+              5,
+              radioButtons(
+                "dec", 
+                h4("Decimal style:"),
+                c(Comma=",",
+                  Point="."),
+                "."
               ),
             )
             #### / -------------------------------------------------------------
@@ -166,13 +271,18 @@ ui <- navbarPage("Metabolomic Search",
             ),
             #### / -------------------------------------------------------------
             
-            #### Decimal option ------------------------------------------------
-            column(5,
-              radioButtons("dec", 
-                h4("Decimal style:"),
-                c(Comma=",",
-                  Point="."),
-                "."
+            #### Separator option ----------------------------------------------
+            column(
+              5,
+              radioButtons(
+                "sep", 
+                h4("Separator character:"),
+                c("Semicolon"=";",
+                  "Space"=" ",
+                  "Comma"=",",
+                  "Tab"="\t",
+                  "Vertical Line |"="|"),
+                ","
               ),
             )
             #### / -------------------------------------------------------------
@@ -180,11 +290,60 @@ ui <- navbarPage("Metabolomic Search",
           
           fluidRow(
             #### Row start option ----------------------------------------------
-            numericInput(
-              "rowStart", 
-              h4("Row to start:"), 
-              value = 1,
-              min = 1
+            tags$div(
+              id = "inline",
+              numericInput(
+                "rowStart", 
+                h4("Row to start:"), 
+                value = 1,
+                min = 1
+              )
+            )
+            #### / -------------------------------------------------------------
+          ),
+          
+          h2("Columns configuration"),
+          p("Edit the following parameters to configure the columns of 
+            your data frame. For each title give a column number"),
+          
+          fluidRow(
+            #### Columns configuration -----------------------------------------
+            tags$head(
+              tags$style(
+                type="text/css", 
+                "#inline label{ display: table-cell; 
+                text-align: center; vertical-align: middle; } 
+                #inline .form-group { display: table-row;}")
+            ),
+            
+            tags$div(
+              id = "inline", 
+              numericInput(
+                "rowNamesColumn", 
+                "Row names:",
+                value = 1,
+                min = 1,
+                step = 1
+              ),
+              numericInput(
+                "mzValueColumn", 
+                "m/z value:",
+                value = 3,
+                min = 1,
+                step = 1
+              ),
+              numericInput(
+                "rtValueColumn", 
+                "RT value:",
+                value = 4,
+                min = 1,
+                step = 1
+              ),
+              textInput(
+                "samplesColumn",
+                "Samples:",
+                value = "5-184"
+              )
             )
             #### / -------------------------------------------------------------
           ),
@@ -219,7 +378,7 @@ ui <- navbarPage("Metabolomic Search",
           p("Choose your compound data from a file with 
           CSV format (only). Press ", 
           strong("'Browse...'"), 
-          " button to upload data. Soon more formats."),
+          " button to upload data."),
                  
           #### Browse compound button ------------------------------------------
           fileInput("compoundDataFile", 
@@ -243,8 +402,7 @@ ui <- navbarPage("Metabolomic Search",
             ),
             #### / -------------------------------------------------------------
             
-            
-            #### Separator option -------------------------------------
+            #### Separator option ----------------------------------------------
             column(5,
               radioButtons("compoundSeparator", 
                 h4("Separator character:"),
@@ -293,6 +451,13 @@ ui <- navbarPage("Metabolomic Search",
             )
             #### / -------------------------------------------------------------
           ),
+          
+          br(),
+          br(),
+          
+          #### UNAL Logo -------------------------------------------------------
+          img(src = "logo_unal.png", height = 80, width = 200)
+          #### / ---------------------------------------------------------------
         ),
                
         #### Present data uploaded --------------------------------------------- 
@@ -304,7 +469,7 @@ ui <- navbarPage("Metabolomic Search",
             "compoundData"
           )
         )
-        #### ------------------------------------------------------------------
+        #### / -----------------------------------------------------------------
       )
     )
   ),
@@ -366,14 +531,14 @@ ui <- navbarPage("Metabolomic Search",
             textInput(
               "fragments", 
               h4("Fragments:"), 
-              value = "138,09; 156,10"
+              value = "138,09-156,10"
             )
             #### / -------------------------------------------------------------
           ),
           
           
           fluidRow(
-            p("Write down every possible fragment separated by ';'")
+            p("Write down every possible fragment separated by '-'")
           ),
           
           
@@ -419,9 +584,9 @@ ui <- navbarPage("Metabolomic Search",
               "search", 
               "Search", 
               icon("search"), 
-              style="color: #DEEDCF; 
-                    background-color: #56B870; 
-                    border-color: #0A2F51"
+              style="color: #FFFFFF;
+                    background-color: #4372AA;
+                    border-color: #000000"
             )
             #### / -------------------------------------------------------------
           )
@@ -437,9 +602,11 @@ ui <- navbarPage("Metabolomic Search",
           #### / ---------------------------------------------------------------
           
           
-          #### Printing other results ------------------------------------------
-          h2("Other results:"),
-          verbatimTextOutput("summary")
+          #### Print complete results ------------------------------------------
+          h2("Complete results:"),
+          DTOutput(
+            "summary"
+          )
           #### / ---------------------------------------------------------------
         )
       )
@@ -516,7 +683,7 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            #### Second search button -------------------------------------------------
+            #### Second search button ------------------------------------------
             actionButton(
               "search_MZRT", 
               "Search", 
@@ -594,13 +761,20 @@ server <- shinyServer(function(input, output) {
         input$header,
         input$sep,
         input$quote,
+        input$dec,
         input$rowStart)
+    
     inFile <- input$mainFile
-    df <- read_delim(inFile$datapath, 
-                     col_names = input$header, 
-                     delim = input$sep,
-                     quote = input$quote,
-                     skip = input$rowStart-1)
+    
+    df <- read.table(
+      inFile$datapath,
+      header = input$header,
+      sep = input$sep,
+      quote = input$quote,
+      dec = input$dec,
+      skip = input$rowStart-1
+    )
+    
     return(df)
   })
   ## / -------------------------------------------------------------------------
@@ -655,51 +829,163 @@ server <- shinyServer(function(input, output) {
   
   # action:
   observeEvent(input$search, {
+    
     # Obtain intervals:
-    searchMol$frag <- as.numeric(gsub(",", ".", 
-                                      strsplit(input$fragments, "; ")[[1]]
-                                      ))
+    if(input$fragments == ""){
+      searchMol$frag <- "No_fragments"
+    }else{
+      searchMol$frag <- as.numeric(gsub(",", ".", 
+                                        strsplit(input$fragments, "-")[[1]]
+      ))
+    }
+    
     # Obtain possible RTs:
     searchMol$RT <- 
-      possibleRT(data(), input$mzValue, input$mzInterval)
-    
-    # Obtain best RT:
-    searchMol$rtNear <-
-      closerFragmentation(data(), searchMol$RT, input$rtInterval, 
-                          input$mzValue, input$correlationLevel, 
-                          searchMol$frag)
-    
-    
-    ### Print Best table -------------------------------------------------------
-    output$bestResult  <- DT::renderDataTable(
-      DT::datatable(
-        { mzNear(
-          data(),
-          searchMol$rtNear$RT, 
-          input$rtInterval, 
-          input$mzValue, 
-          input$correlationLevel
-        ) },
-        
-        extensions = 'Buttons',
-        options = list(dom = 'Blfrtip',
-                       buttons = c('copy', 'csv', 'excel', 'pdf'),
-                       lengthMenu = list(c(10,25,50,-1),
-                                         c(10,25,50,"All"))),
-        
-        class = "display"
+      possibleRT(
+        data(), 
+        input$mzValueColumn, 
+        input$rtValueColumn, 
+        input$mzValue, 
+        input$mzInterval
       )
-    )
-    ### / ----------------------------------------------------------------------
     
-    
-    ### Print possible tables --------------------------------------------------
-    output$summary <- renderPrint({
-      printResults(data(), searchMol$RT, input$rtInterval, 
-                   input$mzValue, input$correlationLevel)
-    })
-    ### / ----------------------------------------------------------------------
-    
+    if(length(searchMol$RT) == 0){
+      ### No data found. Please modify the parameters. -------------------------
+      
+      #### Print Best table ----------------------------------------------------
+      output$bestResult  <- DT::renderDataTable(
+        DT::datatable(
+          {
+            data.frame(
+              "Row_names"   = c("No data found. Please modify the parameters."),
+              "mz"         = c(NA),
+              "RT"          = c(NA),
+              "Correlation" = c(NA)
+            )
+          },
+          
+          extensions = 'Buttons',
+          options = list(dom = 'Blfrtip',
+                         buttons = c('copy', 'csv', 'excel', 'pdf'),
+                         lengthMenu = list(c(10,25,50,-1),
+                                           c(10,25,50,"All"))),
+          
+          class = "display"
+        )
+      )
+      #### / -------------------------------------------------------------------
+      
+      #### Print complete results ----------------------------------------------
+      output$summary <- DT::renderDataTable(
+        DT::datatable(
+          {
+            data.frame(
+              "Group_id"    = c("No data found. Please modify the parameters."),
+              "Score"       = c(NA),
+              "Parental_RT" = c(NA),
+              "Row_names"   = c(NA),
+              "mz"         = c(NA),
+              "RT"          = c(NA),
+              "Correlation" = c(NA)
+            )
+          },
+          
+          extensions = 'Buttons',
+          options = list(dom = 'Blfrtip',
+                         buttons = c('copy', 'csv', 'excel', 'pdf'),
+                         lengthMenu = list(c(10,25,50,-1),
+                                           c(10,25,50,"All"))),
+          
+          class = "display"
+        )
+      )
+      #### / -------------------------------------------------------------------
+    }else{
+      ### Data found -----------------------------------------------------------
+      
+      # Obtain best RT:
+      searchMol$rtNear <-
+        closerFragmentation(
+          data(),
+          input$rowNamesColumn,
+          searchMol$RT, 
+          input$rtValueColumn,
+          input$rtInterval, 
+          input$mzValue,
+          input$mzValueColumn,
+          input$correlationLevel,
+          input$samplesColumn,
+          searchMol$frag
+        )
+      
+      #### Print Best table ----------------------------------------------------
+      bestResult <- mzNear(
+        data(),
+        input$rowNamesColumn,
+        searchMol$rtNear$RT,
+        input$rtValueColumn,
+        input$rtInterval, 
+        input$mzValue,
+        input$mzValueColumn,
+        input$correlationLevel,
+        input$samplesColumn
+      )
+      rownames(bestResult) <- NULL
+      colnames(bestResult) <- c("Row_names", "mz", "RT", "Correlation")
+      
+      output$bestResult  <- DT::renderDataTable(
+        DT::datatable(
+          { 
+            bestResult
+          },
+          
+          extensions = 'Buttons',
+          options = list(dom = 'Blfrtip',
+                         buttons = c('copy', 'csv', 'excel', 'pdf'),
+                         lengthMenu = list(c(10,25,50,-1),
+                                           c(10,25,50,"All"))),
+          
+          class = "display"
+        )
+      )
+      #### / -------------------------------------------------------------------
+      
+      
+      #### Print complete results ----------------------------------------------
+      allResults <- printResults(
+        data(),
+        input$rowNamesColumn,
+        searchMol$RT,
+        input$rtValueColumn,
+        input$rtInterval, 
+        input$mzValue, 
+        input$mzValueColumn,
+        input$correlationLevel,
+        input$samplesColumn,
+        searchMol$frag
+      )
+      rownames(allResults) <- NULL
+      colnames(allResults) <- c("Group_id", "Score", "Parental_RT", 
+                                "Row_names", "mz", "RT", "Correlation")
+      
+      output$summary <- DT::renderDataTable(
+        DT::datatable(
+          {
+            allResults
+          },
+          
+          extensions = 'Buttons',
+          options = list(dom = 'Blfrtip',
+                         buttons = c('copy', 'csv', 'excel', 'pdf'),
+                         lengthMenu = list(c(10,25,50,-1),
+                                           c(10,25,50,"All"))),
+          
+          class = "display"
+        )
+      )
+      #### / -------------------------------------------------------------------
+    }
+
   })
   
   
