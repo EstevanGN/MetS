@@ -16,6 +16,9 @@ if(!require(tidyverse)){
 if(!require(shinyvalidate)){
   install.packages("shinyvalidate")
 }
+if(!require(shinybusy)){
+  install.packages("shinybusy")
+}
 
 
 

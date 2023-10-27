@@ -4,6 +4,7 @@ library(DT)             # Output tables
 library(readr)          # Read big size files
 library(tidyverse)      # %>% function
 library(shinyvalidate)  # Input validation 
+library(shinybusy)      # App indicators
 # / ----------------------------------------------------------------------------
 
 
@@ -46,19 +47,34 @@ mzNear <- function(
     filter(dataSamples[,rtColumn] >= rt-interval, 
            dataSamples[,rtColumn] <= rt+interval )
   
-  matrixRT <- as.matrix(t(rtTarget[,samColumns[1]:samColumns[2]]))
+  indColumns <- samColumns[1]:samColumns[2]
+  matrixRT <- as.matrix(t(rtTarget[,indColumns]))
   
   idMzValue <- which.min(
     abs(rtTarget[,mzColumn] - mz)
   )
   
   idCorrelation <- cor(matrixRT, method="pearson")[idMzValue,] > cor
+  columnsNames <- names(dataSamples)[indColumns]
+  sampMaxIntensity <- NULL
+  
+  focusTable <- rtTarget[idCorrelation,]
+  
+  for(i in 1:nrow(focusTable)){
+    sampMaxIntensity[i] <- paste0(
+      columnsNames[which.max(focusTable[i,indColumns])],
+      " (",
+      max(focusTable[i,indColumns]),
+      ")"
+    )
+  }
   
   result <- cbind(
     data.frame(
-      rtTarget[idCorrelation,]
+      focusTable
     )[,c(rowColumn, mzColumn, rtColumn)],
-    "Corr"=cor(matrixRT, method="pearson")[idMzValue,][idCorrelation]
+    "Corr"=cor(matrixRT, method="pearson")[idMzValue,][idCorrelation],
+    "Samp.max.int"=sampMaxIntensity
   )
   
   return(result)
@@ -250,8 +266,8 @@ ui <- navbarPage("Metabolomic Search",
               radioButtons(
                 "dec", 
                 h4("Decimal style:"),
-                c(Comma=",",
-                  Point="."),
+                c(Point=".",
+                  Comma=","),
                 "."
               ),
             )
@@ -263,8 +279,8 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               radioButtons("quote", 
                 h4("Quote:"),
-                c("None"="",
-                  "Double Quote"="\"",
+                c("Double Quote"="\"",
+                  "None"="",
                   "Single Quote"="'"),
                 "\""
               ),
@@ -282,7 +298,7 @@ ui <- navbarPage("Metabolomic Search",
                   "Comma"=",",
                   "Tab"="\t",
                   "Vertical Line |"="|"),
-                ","
+                ";"
               ),
             )
             #### / -------------------------------------------------------------
@@ -328,21 +344,21 @@ ui <- navbarPage("Metabolomic Search",
               numericInput(
                 "mzValueColumn", 
                 "m/z value:",
-                value = 3,
+                value = 2,
                 min = 1,
                 step = 1
               ),
               numericInput(
                 "rtValueColumn", 
                 "RT value:",
-                value = 4,
+                value = 3,
                 min = 1,
                 step = 1
               ),
               textInput(
                 "samplesColumn",
                 "Samples:",
-                value = "5-184"
+                value = "4-187"
               )
             )
             #### / -------------------------------------------------------------
@@ -352,12 +368,16 @@ ui <- navbarPage("Metabolomic Search",
           br(),
                           
           #### UNAL Logo -------------------------------------------------------
-          img(src = "logo_unal.png", height = 80, width = 200)
+          img(src = "logo_unal.png", height=80, width=200)
           #### / ---------------------------------------------------------------
         ),
                         
-        #### Present data uploaded ---------------------------------------------
         mainPanel(
+          #### Present example of data format ---------------------------------- 
+          h3("Example of a data table format"),
+          img(src = "Samples data example.png", height="100%", width="100%"),
+          
+          #### Present data uploaded -------------------------------------------
           h1("Data Uploaded"),
           br(),
           br(),
@@ -494,7 +514,7 @@ ui <- navbarPage("Metabolomic Search",
               numericInput(
                 "mzValue",
                 h4("Mz Value:"),
-                min = NA,
+                min = 0.00001,
                 max = NA,
                 step = 0.00001,
                 value = 304.15
@@ -538,7 +558,8 @@ ui <- navbarPage("Metabolomic Search",
           
           
           fluidRow(
-            p("Write down every possible fragment separated by '-'")
+            p("Write down every possible fragment separated by '-'. Use ',' 
+            as decimal style")
           ),
           
           
@@ -762,28 +783,51 @@ server <- shinyServer(function(input, output) {
         input$sep,
         input$quote,
         input$dec,
-        input$rowStart)
+        input$rowStart,
+        input$rowNamesColumn,
+        input$mzValueColumn,
+        input$rtValueColumn,
+        input$samplesColumn)
     
     inFile <- input$mainFile
     
-    df <- read.table(
-      inFile$datapath,
-      header = input$header,
-      sep = input$sep,
-      quote = input$quote,
-      dec = input$dec,
-      skip = input$rowStart-1
+    show_modal_spinner(
+      spin = "cube-grid",
+      color = "#4372AA",
+      text = "Reading data..."
     )
-    
+      df <- read.table(
+        inFile$datapath,
+        header = input$header,
+        sep = input$sep,
+        quote = input$quote,
+        dec = input$dec,
+        skip = input$rowStart-1
+      )
+    remove_modal_spinner()
+      
     return(df)
   })
   ## / -------------------------------------------------------------------------
   
   
   ## Print sample data ---------------------------------------------------------
-  output$dataSamples <- renderDT(
-    data()
-  )
+  output$dataSamples <- renderDT({
+    dt <- datatable(
+      data(),
+      extensions = 'Buttons',
+      options = list(
+        dom = 'Blfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf'),
+        columnDefs = list(
+          list(orderable=TRUE, targets=0)
+        )
+      ),
+      class = "display"
+    )
+    dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+    dt
+  })
   ## / -------------------------------------------------------------------------
   
   
@@ -829,6 +873,11 @@ server <- shinyServer(function(input, output) {
   
   # action:
   observeEvent(input$search, {
+    show_modal_spinner(
+      spin = "cube-grid",
+      color = "#4372AA",
+      text = "Please wait..."
+    )
     
     # Obtain intervals:
     if(input$fragments == ""){
@@ -853,52 +902,60 @@ server <- shinyServer(function(input, output) {
       ### No data found. Please modify the parameters. -------------------------
       
       #### Print Best table ----------------------------------------------------
-      output$bestResult  <- DT::renderDataTable(
-        DT::datatable(
-          {
-            data.frame(
-              "Row_names"   = c("No data found. Please modify the parameters."),
-              "mz"         = c(NA),
-              "RT"          = c(NA),
-              "Correlation" = c(NA)
-            )
-          },
-          
+      output$bestResult <- renderDT({
+        dt <- datatable(
+          data.frame(
+            "Row.names"   = c("No data found. Please modify the parameters."),
+            "mz"         = c(NA),
+            "RT"          = c(NA),
+            "Correlation" = c(NA),
+            "Sample.max.intensity" = c(NA)
+          ),
           extensions = 'Buttons',
-          options = list(dom = 'Blfrtip',
-                         buttons = c('copy', 'csv', 'excel', 'pdf'),
-                         lengthMenu = list(c(10,25,50,-1),
-                                           c(10,25,50,"All"))),
-          
+          options = list(
+            dom = 'Blfrtip',
+            buttons = c('copy', 'csv', 'excel', 'pdf'),
+            columnDefs = list(
+              list(orderable=TRUE, targets=0)
+            ),
+            lengthMenu = list(c(10,25,50,-1),
+                              c(10,25,50,"All"))
+          ),
           class = "display"
         )
-      )
+        dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+        dt
+      })
       #### / -------------------------------------------------------------------
       
       #### Print complete results ----------------------------------------------
-      output$summary <- DT::renderDataTable(
-        DT::datatable(
-          {
-            data.frame(
-              "Group_id"    = c("No data found. Please modify the parameters."),
-              "Score"       = c(NA),
-              "Parental_RT" = c(NA),
-              "Row_names"   = c(NA),
-              "mz"         = c(NA),
-              "RT"          = c(NA),
-              "Correlation" = c(NA)
-            )
-          },
-          
+      output$summary <- renderDT({
+        dt <- datatable(
+          data.frame(
+            "Group.id"    = c("No data found. Please modify the parameters."),
+            "Score"       = c(NA),
+            "Parental.RT" = c(NA),
+            "Row.names"   = c(NA),
+            "mz"         = c(NA),
+            "RT"          = c(NA),
+            "Correlation" = c(NA),
+            "Sample.max.intensity" = c(NA)
+          ),
           extensions = 'Buttons',
-          options = list(dom = 'Blfrtip',
-                         buttons = c('copy', 'csv', 'excel', 'pdf'),
-                         lengthMenu = list(c(10,25,50,-1),
-                                           c(10,25,50,"All"))),
-          
+          options = list(
+            dom = 'Blfrtip',
+            buttons = c('copy', 'csv', 'excel', 'pdf'),
+            columnDefs = list(
+              list(orderable=TRUE, targets=0)
+            ),
+            lengthMenu = list(c(10,25,50,-1),
+                              c(10,25,50,"All"))
+          ),
           class = "display"
         )
-      )
+        dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+        dt
+      })
       #### / -------------------------------------------------------------------
     }else{
       ### Data found -----------------------------------------------------------
@@ -931,23 +988,31 @@ server <- shinyServer(function(input, output) {
         input$samplesColumn
       )
       rownames(bestResult) <- NULL
-      colnames(bestResult) <- c("Row_names", "mz", "RT", "Correlation")
+      colnames(bestResult) <- c("Row.names", "mz", "RT", 
+                                "Correlation", "Sample.max.intensity")
+      numeric_cols <- sapply(bestResult, is.numeric)
+      bestResult[numeric_cols] <- lapply(
+        bestResult[numeric_cols], function(x) round(x, 5)
+      )
       
-      output$bestResult  <- DT::renderDataTable(
-        DT::datatable(
-          { 
-            bestResult
-          },
-          
+      output$bestResult  <- renderDT({
+        dt <- datatable(
+          bestResult,
           extensions = 'Buttons',
-          options = list(dom = 'Blfrtip',
-                         buttons = c('copy', 'csv', 'excel', 'pdf'),
-                         lengthMenu = list(c(10,25,50,-1),
-                                           c(10,25,50,"All"))),
-          
+          options = list(
+            dom = 'Blfrtip',
+            buttons = c('copy', 'csv', 'excel', 'pdf'),
+            columnDefs = list(
+              list(orderable=TRUE, targets=0)
+            ),
+            lengthMenu = list(c(10,25,50,-1),
+                              c(10,25,50,"All"))
+          ),
           class = "display"
         )
-      )
+        dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+        dt
+      })
       #### / -------------------------------------------------------------------
       
       
@@ -965,27 +1030,36 @@ server <- shinyServer(function(input, output) {
         searchMol$frag
       )
       rownames(allResults) <- NULL
-      colnames(allResults) <- c("Group_id", "Score", "Parental_RT", 
-                                "Row_names", "mz", "RT", "Correlation")
+      colnames(allResults) <- c("Group.id", "Score", "Parental.RT", 
+                                "Row.names", "mz", "RT", "Correlation",
+                                "Sample.max.intensity")
+      numeric_cols <- sapply(allResults, is.numeric)
+      allResults[numeric_cols] <- lapply(
+        allResults[numeric_cols], function(x) round(x, 5)
+      )
       
-      output$summary <- DT::renderDataTable(
-        DT::datatable(
-          {
-            allResults
-          },
-          
+      output$summary <- renderDT({
+        dt <- datatable(
+          allResults,
           extensions = 'Buttons',
-          options = list(dom = 'Blfrtip',
-                         buttons = c('copy', 'csv', 'excel', 'pdf'),
-                         lengthMenu = list(c(10,25,50,-1),
-                                           c(10,25,50,"All"))),
-          
+          options = list(
+            dom = 'Blfrtip',
+            buttons = c('copy', 'csv', 'excel', 'pdf'),
+            columnDefs = list(
+              list(orderable=TRUE, targets=0)
+            ),
+            lengthMenu = list(c(10,25,50,-1),
+                              c(10,25,50,"All"))
+          ),
           class = "display"
         )
-      )
+        dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+        dt
+      })
       #### / -------------------------------------------------------------------
     }
 
+  remove_modal_spinner()
   })
   
   
