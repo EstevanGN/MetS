@@ -5,6 +5,7 @@ library(readr)          # Read big size files
 library(tidyverse)      # %>% function
 library(shinyvalidate)  # Input validation 
 library(shinybusy)      # App indicators
+library(MSbox)          # Calculate mz
 # / ----------------------------------------------------------------------------
 
 
@@ -732,39 +733,125 @@ ui <- navbarPage("Metabolomic Search",
   ),
   
   
-  ## More info section ---------------------------------------------------------
-  tabPanel("Information",
-    h1("Authors"),
-    p("",
-      strong("Daniel Estevan Garcia Niño"), br(),
-      "dgarcian@unal.edu.co", br(),
-      "Statistician.", br(),
-      "Student, Computer Science.", br(),
-      "Universidad Nacional De Colombia.", br(),
-      "Sede Bogotá."),
+  ## More tools section --------------------------------------------------------
+  navbarMenu("More tools",
     
-    br(),
-           
-    p("",
-      strong("Federico Roda, PhD"), br(),
-      "Max Planck Tandem Group Leader", br(),
-      "Universidad Nacional de Colombia, Sede Bogotá", br(),
-      "e-mail: frodaf@unal.edu.co"),
-           
-    br(),
-           
-    p("",
-      strong("Liliana López Kleine"), br(),
-      "Profesora titular", br(),
-      "llopezk@unal.edu.co", br(),
-      "Departamento de estadística", br(),
-      "Facultad de Ciencias", br(),
-      "Universidad Nacional de Colombia - sede Bogotá"),
-           
-    h1("Help"),
-    p("For more information:", 
-      a(href="https://github.com/EstevanGN/Metabolomic-search",
-        "GitHub repository"))
+    ### Calculate mz section ---------------------------------------------------
+    tabPanel("Calculate mz",
+      sidebarLayout(
+        sidebarPanel(
+          h3("MSbox::mz"),
+          p("This tool calculate accurate mass-to-charge ratio (m/z)."),
+          h3("Arguments:"),
+          tags$div(
+            tags$ul(
+              tags$li(strong("m:")," chemical formula of an ion, 
+                      case insensitive."),
+              tags$li(strong("z:")," charge."),
+              tags$li(strong("caseSensitive:")," if case sensitive is 'FALSE' 
+                      (default), the elements are seperated by numbers. 
+                      For instance, Carbon dioxyde can be written as 'c1o2' 
+                      or any combination of the two elements in lower or 
+                      upper cases. However, the number of elements should 
+                      be clearly stated in the chemical formula. If case 
+                      sensitive is 'TRUE', the elements are seperated by 
+                      upper case letters. For instance, Carbon dioxyde must 
+                      be written as 'C1O2' or 'CO2'. You don't meed to write 
+                      the number of the element if it is 1."),
+            )
+          ),
+          
+          fluidRow(
+            #### m option ------------------------------------------------------
+            textInput(
+              "m", 
+              h4("m:"), 
+              value = "C7H7O"
+            )
+            #### / -------------------------------------------------------------
+          ),
+          
+          fluidRow(
+            #### z option ------------------------------------------------------
+            column(5,
+                   radioButtons("z", 
+                                h4("z:"),
+                                c("1"=1,
+                                  "-1"=-1),
+                                1
+                   )
+            ),
+            #### / -------------------------------------------------------------
+            #### caseSensitive option ------------------------------------------
+            column(5,
+                   checkboxInput(
+                     "caseSensitive", 
+                     h4("caseSensitive"),
+                     TRUE
+                   )
+            ),
+            #### / -------------------------------------------------------------
+          ),
+          
+          fluidRow(
+            #### Search button -------------------------------------------------
+            actionButton(
+              "searchMZ", 
+              "Search", 
+              icon("search"), 
+              style="color: #FFFFFF;
+                    background-color: #4372AA;
+                    border-color: #000000"
+            )
+            #### / -------------------------------------------------------------
+          )
+          
+        ),
+        mainPanel(
+          h1("m/z Result:"),
+          textOutput(
+            "accurateMZ"
+          )
+        )
+      )
+    ),
+    ### / ----------------------------------------------------------------------
+    
+    ### Information section ----------------------------------------------------
+    tabPanel("Information",
+      h1("Authors"),
+      p("",
+        strong("Daniel Estevan Garcia Niño"), br(),
+        "dgarcian@unal.edu.co", br(),
+        "Statistician.", br(),
+        "Student, Computer Science.", br(),
+        "Universidad Nacional De Colombia.", br(),
+        "Sede Bogotá."),
+      
+      br(),
+             
+      p("",
+        strong("Federico Roda, PhD"), br(),
+        "Max Planck Tandem Group Leader", br(),
+        "Universidad Nacional de Colombia, Sede Bogotá", br(),
+        "e-mail: frodaf@unal.edu.co"),
+             
+      br(),
+             
+      p("",
+        strong("Liliana López Kleine"), br(),
+        "Profesora titular", br(),
+        "llopezk@unal.edu.co", br(),
+        "Departamento de estadística", br(),
+        "Facultad de Ciencias", br(),
+        "Universidad Nacional de Colombia - sede Bogotá"),
+             
+      h1("Help"),
+      p("For more information:", 
+        a(href="https://github.com/EstevanGN/Metabolomic-search",
+          "GitHub repository"))
+    )
+    ### / ----------------------------------------------------------------------
   )
   ## / -------------------------------------------------------------------------
 
@@ -1093,7 +1180,26 @@ server <- shinyServer(function(input, output) {
   })
   
   
-  ## Read posible molecules ----------------------------------------------------
+  ## MZ button search ----------------------------------------------------------
+  #action:
+  m_reactive <- eventReactive( input$searchMZ, {
+    input$m
+  })
+  z_reactive <- eventReactive( input$searchMZ, {
+    as.numeric(input$z)
+  })
+  caseSensitive_reactive <- eventReactive( input$searchMZ, {
+    input$caseSensitive
+  })
+    ### Calculate function and return result -----------------------------------
+    output$accurateMZ  <- renderText({
+      mz(
+        m_reactive(),
+        z = z_reactive(),
+        caseSensitive = caseSensitive_reactive()
+      )
+    })
+    ### / ----------------------------------------------------------------------
   
 })
 

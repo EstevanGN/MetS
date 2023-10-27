@@ -19,6 +19,9 @@ if(!require(shinyvalidate)){
 if(!require(shinybusy)){
   install.packages("shinybusy")
 }
+if(!require(MSbox)){
+  install.packages("MSbox")
+}
 
 
 
