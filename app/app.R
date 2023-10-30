@@ -651,7 +651,7 @@ ui <- navbarPage("Metabolomic Search",
               numericInput(
                 "mzValue_MZRT",
                 h4("Mz Value:"),
-                min = NA,
+                min = 0.00001,
                 max = NA,
                 step = 0.00001,
                 value = 304.15
@@ -680,7 +680,7 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               numericInput(
                 "rtValue_MZRT",
-                h4("Rt Value:"),
+                h4("RT Value:"),
                 min = 0,
                 step = 0.00001,
                 value = 4.97
@@ -693,7 +693,7 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               numericInput(
                 "rtInterval_MZRT",
-                h4("Rt Interval:"),
+                h4("RT Interval:"),
                 min = 0.00001,
                 max = NA,
                 step = 0.00001,
@@ -710,9 +710,9 @@ ui <- navbarPage("Metabolomic Search",
               "search_MZRT", 
               "Search", 
               icon("search"), 
-              style="color: #DEEDCF; 
-                    background-color: #56B870; 
-                    border-color: #0A2F51"
+              style="color: #FFFFFF; 
+                    background-color: #4372AA; 
+                    border-color: #000000"
             )
             #### / -------------------------------------------------------------
           )
@@ -748,15 +748,15 @@ ui <- navbarPage("Metabolomic Search",
               tags$li(strong("m:")," chemical formula of an ion, 
                       case insensitive."),
               tags$li(strong("z:")," charge."),
-              tags$li(strong("caseSensitive:")," if case sensitive is 'FALSE' 
-                      (default), the elements are seperated by numbers. 
+              tags$li(strong("caseSensitive:")," if case sensitive is 'FALSE', 
+                      the elements are seperated by numbers. 
                       For instance, Carbon dioxyde can be written as 'c1o2' 
                       or any combination of the two elements in lower or 
                       upper cases. However, the number of elements should 
                       be clearly stated in the chemical formula. If case 
                       sensitive is 'TRUE', the elements are seperated by 
                       upper case letters. For instance, Carbon dioxyde must 
-                      be written as 'C1O2' or 'CO2'. You don't meed to write 
+                      be written as 'C1O2' or 'CO2'. You don't need to write 
                       the number of the element if it is 1."),
             )
           ),
@@ -1150,33 +1150,57 @@ server <- shinyServer(function(input, output) {
   })
   
   
-  ## Second button search ------------------------------------------------------
-  
+  ## MZ and RT button search ----------------------------------------------
+  # initialization of search parameters:
   # action:
   observeEvent(input$search_MZRT, {
+    show_modal_spinner(
+      spin = "cube-grid",
+      color = "#4372AA",
+      text = "Please wait..."
+    )
     
     ### Print Best table -------------------------------------------------------
-    output$bestResult_MZRT  <- DT::renderDataTable(
-      DT::datatable(
-        { mzNear(
-          data(),
-          input$rtValue_MZRT, 
-          input$rtInterval_MZRT, 
-          input$mzValue_MZRT, 
-          input$correlationLevel_MZRT
-        ) },
-        
+    bestResult_MZRT <- mzNear(
+      data(),
+      input$rowNamesColumn,
+      input$rtValue_MZRT,
+      input$rtValueColumn,
+      input$rtInterval_MZRT, 
+      input$mzValue_MZRT,
+      input$mzValueColumn,
+      input$correlationLevel_MZRT,
+      input$samplesColumn
+    )
+    rownames(bestResult_MZRT) <- NULL
+    colnames(bestResult_MZRT) <- c("Row.names", "mz", "RT", 
+                              "Correlation", "Sample.max.intensity")
+    numeric_cols <- sapply(bestResult_MZRT, is.numeric)
+    bestResult_MZRT[numeric_cols] <- lapply(
+      bestResult_MZRT[numeric_cols], function(x) round(x, 5)
+    )
+    
+    output$bestResult_MZRT  <- renderDT({
+      dt <- datatable(
+        bestResult_MZRT,
         extensions = 'Buttons',
-        options = list(dom = 'Blfrtip',
-                       buttons = c('copy', 'csv', 'excel', 'pdf'),
-                       lengthMenu = list(c(10,25,50,-1),
-                                         c(10,25,50,"All"))),
-        
+        options = list(
+          dom = 'Blfrtip',
+          buttons = c('copy', 'csv', 'excel', 'pdf'),
+          columnDefs = list(
+            list(orderable=TRUE, targets=0)
+          ),
+          lengthMenu = list(c(10,25,50,-1),
+                            c(10,25,50,"All"))
+        ),
         class = "display"
       )
-    )
+      dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+      dt
+    })
     ### / ----------------------------------------------------------------------
     
+    remove_modal_spinner()
   })
   
   
