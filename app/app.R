@@ -369,7 +369,7 @@ ui <- navbarPage("Metabolomic Search",
           br(),
                           
           #### UNAL Logo -------------------------------------------------------
-          img(src = "logo_unal.png", height=80, width=200)
+          img(src = "logo_unal.png", height="70%", width="70%")
           #### / ---------------------------------------------------------------
         ),
                         
@@ -423,17 +423,14 @@ ui <- navbarPage("Metabolomic Search",
             ),
             #### / -------------------------------------------------------------
             
-            #### Separator option ----------------------------------------------
+            #### Decimal option ------------------------------------------------
             column(5,
-              radioButtons("compoundSeparator", 
-                h4("Separator character:"),
-                c("Semicolon"=";",
-                  "Space"=" ",
-                  "Comma"=",",
-                  "Tab"="\t",
-                  "Vertical Line |"="|"),
-                ";"
-              )
+                   radioButtons("compoundDec", 
+                                h4("Decimal style:"),
+                                c(Point=".",
+                                  Comma=","),
+                                ","
+                   ),
             )
             #### / -------------------------------------------------------------
           ),
@@ -443,32 +440,87 @@ ui <- navbarPage("Metabolomic Search",
             column(5,
               radioButtons("compoundQuote", 
                 h4("Quote:"),
-                c(None="",
-                  "Double Quote"="\"",
+                c("Double Quote"="\"",
+                  None="",
                   "Single Quote"="'"),
                 "\""
               ),
             ),
             #### / -------------------------------------------------------------
             
-            #### Decimal option ------------------------------------------------
+            #### Separator option ----------------------------------------------
             column(5,
-              radioButtons("compoundDec", 
-                h4("Decimal style:"),
-                c(Comma=",",
-                  Point="."),
-                ","
-              ),
+                   radioButtons("compoundSeparator", 
+                                h4("Separator character:"),
+                                c("Semicolon"=";",
+                                  "Space"=" ",
+                                  "Comma"=",",
+                                  "Tab"="\t",
+                                  "Vertical Line |"="|"),
+                                ";"
+                   )
             )
             #### / -------------------------------------------------------------
           ),
                  
           fluidRow(
             #### Row start option ----------------------------------------------
-            numericInput("compoundRowStart", 
-              h4("Row to start:"), 
-              value = 1,
-              min = 1
+            tags$div(
+              id = "inline",
+              numericInput(
+                "compoundRowStart", 
+                h4("Row to start:"), 
+                value = 1,
+                min = 1
+              )
+            )
+            #### / -------------------------------------------------------------
+          ),
+          
+          h2("Columns configuration"),
+          p("Edit the following parameters to configure the columns of 
+            your data frame. For each title give a column number"),
+          
+          fluidRow(
+            #### Columns configuration -----------------------------------------
+            tags$head(
+              tags$style(
+                type="text/css", 
+                "#inline label{ display: table-cell; 
+                text-align: center; vertical-align: middle; } 
+                #inline .form-group { display: table-row;}")
+            ),
+            
+            tags$div(
+              id = "inline", 
+              numericInput(
+                "compoundIDColumn", 
+                "Compound IDs:",
+                value = 1,
+                min = 1,
+                step = 1
+              ),
+              numericInput(
+                "compoundMZColumn", 
+                "m/z value:",
+                value = 2,
+                min = 1,
+                step = 1
+              ),
+              numericInput(
+                "compoundRTColumn", 
+                "RT value:",
+                value = 3,
+                min = 1,
+                step = 1
+              ),
+              numericInput(
+                "compoundFragColumn", 
+                "Fragmentation pattern:",
+                value = 4,
+                min = 1,
+                step = 1
+              )
             )
             #### / -------------------------------------------------------------
           ),
@@ -477,7 +529,7 @@ ui <- navbarPage("Metabolomic Search",
           br(),
           
           #### UNAL Logo -------------------------------------------------------
-          img(src = "logo_unal.png", height = 80, width = 200)
+          img(src = "logo_unal.png", height="70%", width="70%")
           #### / ---------------------------------------------------------------
         ),
                
@@ -659,35 +711,47 @@ ui <- navbarPage("Metabolomic Search",
             ),
             #### / -------------------------------------------------------------
             
-            
-            #### Correlation option -------------------------------------------
+            #### M/z interval option -------------------------------------------
             column(5,
-              numericInput(
-                "correlationLevel_MZRT",
-                h4("Correlation"),
-                min = 0,
-                max = 1,
-                step = 0.00001,
-                value = 0.95
-              ),
-            ),
+                   numericInput(
+                     "mzInterval_MZRT",
+                     h4("Mz Interval:"),
+                     min = 0.00001,
+                     max = NA,
+                     step = 0.00001,
+                     value = 0.01
+                   ),
+            )
             #### / -------------------------------------------------------------
           ),
-          
           
           fluidRow(
             #### RT value option -----------------------------------------------
             column(5,
-              numericInput(
-                "rtValue_MZRT",
-                h4("RT Value:"),
-                min = 0,
-                step = 0.00001,
-                value = 4.97
-              ),
+                   numericInput(
+                     "rtValue_MZRT",
+                     h4("RT Value:"),
+                     min = 0,
+                     step = 0.00001,
+                     value = 4.97
+                   ),
             ),
             #### / -------------------------------------------------------------
-            
+          ),
+          
+          fluidRow(
+            #### Correlation option -------------------------------------------
+            column(5,
+                   numericInput(
+                     "correlationLevel_MZRT",
+                     h4("Correlation"),
+                     min = 0,
+                     max = 1,
+                     step = 0.00001,
+                     value = 0.95
+                   ),
+            ),
+            #### / -------------------------------------------------------------
             
             #### RT Interval option --------------------------------------------
             column(5,
@@ -1161,43 +1225,105 @@ server <- shinyServer(function(input, output) {
     )
     
     ### Print Best table -------------------------------------------------------
-    bestResult_MZRT <- mzNear(
-      data(),
-      input$rowNamesColumn,
-      input$rtValue_MZRT,
-      input$rtValueColumn,
-      input$rtInterval_MZRT, 
-      input$mzValue_MZRT,
-      input$mzValueColumn,
-      input$correlationLevel_MZRT,
-      input$samplesColumn
-    )
-    rownames(bestResult_MZRT) <- NULL
-    colnames(bestResult_MZRT) <- c("Row.names", "mz", "RT", 
-                              "Correlation", "Sample.max.intensity")
-    numeric_cols <- sapply(bestResult_MZRT, is.numeric)
-    bestResult_MZRT[numeric_cols] <- lapply(
-      bestResult_MZRT[numeric_cols], function(x) round(x, 5)
-    )
-    
-    output$bestResult_MZRT  <- renderDT({
-      dt <- datatable(
-        bestResult_MZRT,
-        extensions = 'Buttons',
-        options = list(
-          dom = 'Blfrtip',
-          buttons = c('copy', 'csv', 'excel', 'pdf'),
-          columnDefs = list(
-            list(orderable=TRUE, targets=0)
-          ),
-          lengthMenu = list(c(10,25,50,-1),
-                            c(10,25,50,"All"))
-        ),
-        class = "display"
+    if(
+      input$rtValue_MZRT >= min(data()[,input$rtValueColumn])
+      &
+      input$rtValue_MZRT <= max(data()[,input$rtValueColumn])
+    ){
+      bestResult_MZRT <- mzNear(
+        data(),
+        input$rowNamesColumn,
+        input$rtValue_MZRT,
+        input$rtValueColumn,
+        input$rtInterval_MZRT, 
+        input$mzValue_MZRT,
+        input$mzValueColumn,
+        input$correlationLevel_MZRT,
+        input$samplesColumn
       )
-      dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
-      dt
-    })
+      rownames(bestResult_MZRT) <- NULL
+      colnames(bestResult_MZRT) <- c("Row.names", "mz", "RT", 
+                                     "Correlation", "Sample.max.intensity")
+      numeric_cols <- sapply(bestResult_MZRT, is.numeric)
+      bestResult_MZRT[numeric_cols] <- lapply(
+        bestResult_MZRT[numeric_cols], function(x) round(x, 5)
+      )
+      
+      if(
+        min(
+          abs(bestResult_MZRT[,"mz"]-input$mzValue_MZRT)
+        ) > input$mzInterval_MZRT
+      ){
+        output$bestResult_MZRT <- renderDT({
+          dt <- datatable(
+            data.frame(
+              "Row.names"   = c("No data found. Please modify the parameters."),
+              "mz"         = c(NA),
+              "RT"          = c(NA),
+              "Correlation" = c(NA),
+              "Sample.max.intensity" = c(NA)
+            ),
+            extensions = 'Buttons',
+            options = list(
+              dom = 'Blfrtip',
+              buttons = c('copy', 'csv', 'excel', 'pdf'),
+              columnDefs = list(
+                list(orderable=TRUE, targets=0)
+              ),
+              lengthMenu = list(c(10,25,50,-1),
+                                c(10,25,50,"All"))
+            ),
+            class = "display"
+          )
+          dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+          dt
+        })
+      }else{
+        output$bestResult_MZRT  <- renderDT({
+          dt <- datatable(
+            bestResult_MZRT,
+            extensions = 'Buttons',
+            options = list(
+              dom = 'Blfrtip',
+              buttons = c('copy', 'csv', 'excel', 'pdf'),
+              columnDefs = list(
+                list(orderable=TRUE, targets=0)
+              ),
+              lengthMenu = list(c(10,25,50,-1),
+                                c(10,25,50,"All"))
+            ),
+            class = "display"
+          )
+          dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+          dt
+        })
+      }
+    }else{
+      output$bestResult_MZRT <- renderDT({
+        dt <- datatable(
+          data.frame(
+            "Row.names"   = c("No data found. Please modify the parameters."),
+            "mz"         = c(NA),
+            "RT"          = c(NA),
+            "Correlation" = c(NA),
+            "Sample.max.intensity" = c(NA)
+          ),
+          extensions = 'Buttons',
+          options = list(
+            dom = 'Blfrtip',
+            buttons = c('copy', 'csv', 'excel', 'pdf'),
+            columnDefs = list(
+              list(orderable=TRUE, targets=0)
+            ),
+            lengthMenu = list(c(10,25,50,-1),
+                              c(10,25,50,"All"))
+          ),
+          class = "display"
+        )
+        dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
+        dt
+      })
+    }
     ### / ----------------------------------------------------------------------
     
     remove_modal_spinner()
