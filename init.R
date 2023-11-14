@@ -1,6 +1,4 @@
-# ___________________________________________________________________
-# Installing necessary libraries ------------------------------------
-# ___________________________________________________________________
+# Installing necessary libraries -----------------------------------------------
 if(!require(shiny)){
   install.packages("shiny")
 }
@@ -25,18 +23,26 @@ if(!require(MSbox)){
 
 
 
-# ___________________________________________________________________
-# Libraries ---------------------------------------------------------
-# ___________________________________________________________________
+# Libraries --------------------------------------------------------------------
 library(shiny)          # basic for shiny apps
 library(DT)             # Output tables
 library(readr)          # Read big size files
 library(tidyverse)      # %>% function
 library(shinyvalidate)  # Input validation 
+library(shinybusy)      # App indicators
+library(MSbox)          # Calculate mz
 
 
 
-# ___________________________________________________________________
+# Local files ------------------------------------------------------------------
+source("app/functions.R")
+
+
+
+# Shiny options ----------------------------------------------------------------
+options(shiny.maxRequestSize=3000*1024^2)
+
+
+
 # Execute App -------------------------------------------------------
-# ___________________________________________________________________
-runApp('app')
+runApp("app")
