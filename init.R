@@ -20,6 +20,9 @@ if(!require(shinybusy)){
 if(!require(MSbox)){
   install.packages("MSbox")
 }
+if(!require(MSbox)){
+  install.packages("plotly")
+}
 
 
 
@@ -31,6 +34,7 @@ library(tidyverse)      # %>% function
 library(shinyvalidate)  # Input validation 
 library(shinybusy)      # App indicators
 library(MSbox)          # Calculate mz
+library(plotly)         # Plots
 
 
 

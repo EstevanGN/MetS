@@ -127,12 +127,22 @@ tab_onlyMZ <- tabPanel(
       DTOutput(
         "bestResult"
       ),
+      br(),
+      br(),
+      uiOutput("graph_possibility"),
+      br(),
+      plotlyOutput("selectedPlot"),
       
       # Print complete results -------------------------------------------------
       h2("Complete results:"),
       DTOutput(
         "summary"
-      )
+      ),
+      br(),
+      br(),
+      uiOutput("complete_graph_possibility"),
+      br(),
+      plotlyOutput("completeSelectedPlot")
     )
   )
 )

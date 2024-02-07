@@ -125,6 +125,11 @@ tab_mzAndRT <- tabPanel(
       DTOutput(
         "bestResult_MZRT"
       ),
+      br(),
+      br(),
+      uiOutput("MZRT_graph_possibility"),
+      br(),
+      plotlyOutput("MZRTSelectedPlot")
     )
   )
 )

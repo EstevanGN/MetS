@@ -95,7 +95,12 @@ tab_compoundSearch <- tabPanel(
       h1("Complete results:"),
       DTOutput(
         "summaryCompound"
-      )
+      ),
+      br(),
+      br(),
+      uiOutput("compound_graph_possibility"),
+      br(),
+      plotlyOutput("compoundSelectedPlot")
     )
   )
 )

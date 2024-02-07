@@ -187,6 +187,13 @@ server <- shinyServer(function(input, output) {
         dt
       })
       
+      output$graph_possibility <- renderUI({
+        HTML('<span style="color: #4372AA; font-weight: bold;">Graphic not 
+             available.</span>')
+      })
+      
+      output$selectedPlot <- renderPlotly({NULL})
+      
       ### Print complete results -----------------------------------------------
       output$summary <- renderDT({
         dt <- datatable(
@@ -211,6 +218,13 @@ server <- shinyServer(function(input, output) {
         dt
       })
       
+      output$complete_graph_possibility <- renderUI({
+        HTML('<span style="color: #4372AA; font-weight: bold;">Graphic not 
+             available.</span>')
+      })
+      
+      output$completeSelectedPlot <- renderPlotly({NULL})
+      
     }else{
       ## Data found ------------------------------------------------------------
       
@@ -230,19 +244,20 @@ server <- shinyServer(function(input, output) {
         )
       
       ### Print Best table -----------------------------------------------------
+      dtBestReult <- bestResultTable(
+        data(),
+        input$rowNamesColumn,
+        searchMol$rtNear$RT,
+        input$rtValueColumn,
+        rtInterval_reactive(), 
+        mzValue_reactive(),
+        input$mzValueColumn,
+        correlation_reactive(),
+        input$samplesColumn
+      )
       output$bestResult  <- renderDT({
         dt <- datatable(
-          bestResultTable(
-            data(),
-            input$rowNamesColumn,
-            searchMol$rtNear$RT,
-            input$rtValueColumn,
-            rtInterval_reactive(), 
-            mzValue_reactive(),
-            input$mzValueColumn,
-            correlation_reactive(),
-            input$samplesColumn
-          ),
+          dtBestReult,
           
           extensions = 'Buttons',
           
@@ -256,29 +271,62 @@ server <- shinyServer(function(input, output) {
                               c(10,25,50,"All"))
           ),
           
-          class = "display"
+          class = "display",
         )
         
         dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
         dt
+      })
+      
+      output$graph_possibility <- renderUI({
+        HTML('<span style="color: #4372AA; font-weight: bold;">Select rows 
+        from the table to display the intensity graph by samples.</span>')
+      })
+      
+      # Plot selected rows
+      output$selectedPlot <- renderPlotly({
+        selected <- input$bestResult_rows_selected
+        if (length(selected) == 0) return(NULL)
+        
+        names <- dtBestReult[selected, 'Row.names']
+        
+        data_filtered <- data() %>%
+          filter(pull(., input$rowNamesColumn) %in% names)
+        samColumns <- as.numeric(
+          strsplit(input$samplesColumn, "-")[[1]]
+        )
+        data_filtered <- data_filtered[,c(input$rowNamesColumn,
+                               samColumns[1]:samColumns[2])]
+        
+        transposed_data <- data_filtered %>%
+          pivot_longer(cols = -1, names_to = "Variable", values_to = "Valor")
+        colnames(transposed_data) <- c("Names", "Samples", "Value")
+        
+        plot_ly(transposed_data, x = ~Samples, y = ~Value, 
+                color = ~factor(Names), type = 'bar') %>%
+          layout(barmode = 'group',
+                 xaxis = list(title = "Samples"),
+                 yaxis = list(title = "Intensity"),
+                 title = "Intensity of samples in selected rows")
       })
       
       
       ### Print complete results -----------------------------------------------
+      dtSummary <- completeResultTable(
+        data(),
+        input$rowNamesColumn,
+        searchMol$RT,
+        input$rtValueColumn,
+        rtInterval_reactive(), 
+        mzValue_reactive(), 
+        input$mzValueColumn,
+        correlation_reactive(),
+        input$samplesColumn,
+        searchMol$frag
+      )
       output$summary <- renderDT({
         dt <- datatable(
-          completeResultTable(
-            data(),
-            input$rowNamesColumn,
-            searchMol$RT,
-            input$rtValueColumn,
-            rtInterval_reactive(), 
-            mzValue_reactive(), 
-            input$mzValueColumn,
-            correlation_reactive(),
-            input$samplesColumn,
-            searchMol$frag
-          ),
+          dtSummary,
           
           extensions = 'Buttons',
           
@@ -298,6 +346,39 @@ server <- shinyServer(function(input, output) {
         dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
         dt
       })
+      
+      output$complete_graph_possibility <- renderUI({
+        HTML('<span style="color: #4372AA; font-weight: bold;">Select rows 
+        from the table to display the intensity graph by samples.</span>')
+      })
+      
+      # Plot selected rows
+      output$completeSelectedPlot <- renderPlotly({
+        selected <- input$summary_rows_selected
+        if (length(selected) == 0) return(NULL)
+        
+        names <- dtSummary[selected, 'Row.names']
+        
+        data_filtered <- data() %>%
+          filter(pull(., input$rowNamesColumn) %in% names)
+        samColumns <- as.numeric(
+          strsplit(input$samplesColumn, "-")[[1]]
+        )
+        data_filtered <- data_filtered[,c(input$rowNamesColumn,
+                                          samColumns[1]:samColumns[2])]
+        
+        transposed_data <- data_filtered %>%
+          pivot_longer(cols = -1, names_to = "Variable", values_to = "Valor")
+        colnames(transposed_data) <- c("Names", "Samples", "Value")
+        
+        plot_ly(transposed_data, x = ~Samples, y = ~Value, 
+                color = ~factor(Names), type = 'bar') %>%
+          layout(barmode = 'group',
+                 xaxis = list(title = "Samples"),
+                 yaxis = list(title = "Intensity"),
+                 title = "Intensity of samples in selected rows")
+      })
+    
     }
     
     remove_modal_spinner()
@@ -378,6 +459,13 @@ server <- shinyServer(function(input, output) {
           dt
         })
         
+        output$MZRT_graph_possibility <- renderUI({
+          HTML('<span style="color: #4372AA; font-weight: bold;">Graphic not 
+             available.</span>')
+        })
+        
+        output$MZRTSelectedPlot <- renderPlotly({NULL})
+        
       }else{
         output$bestResult_MZRT  <- renderDT({
           dt <- datatable(
@@ -400,6 +488,38 @@ server <- shinyServer(function(input, output) {
           
           dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
           dt
+        })
+        
+        output$MZRT_graph_possibility <- renderUI({
+          HTML('<span style="color: #4372AA; font-weight: bold;">Select rows 
+        from the table to display the intensity graph by samples.</span>')
+        })
+        
+        # Plot selected rows
+        output$MZRTSelectedPlot <- renderPlotly({
+          selected <- input$bestResult_MZRT_rows_selected
+          if (length(selected) == 0) return(NULL)
+          
+          names <- bestResult_MZRT[selected, 'Row.names']
+          
+          data_filtered <- data() %>%
+            filter(pull(., input$rowNamesColumn) %in% names)
+          samColumns <- as.numeric(
+            strsplit(input$samplesColumn, "-")[[1]]
+          )
+          data_filtered <- data_filtered[,c(input$rowNamesColumn,
+                                            samColumns[1]:samColumns[2])]
+          
+          transposed_data <- data_filtered %>%
+            pivot_longer(cols = -1, names_to = "Variable", values_to = "Valor")
+          colnames(transposed_data) <- c("Names", "Samples", "Value")
+          
+          plot_ly(transposed_data, x = ~Samples, y = ~Value, 
+                  color = ~factor(Names), type = 'bar') %>%
+            layout(barmode = 'group',
+                   xaxis = list(title = "Samples"),
+                   yaxis = list(title = "Intensity"),
+                   title = "Intensity of samples in selected rows")
         })
       }
       
@@ -426,6 +546,13 @@ server <- shinyServer(function(input, output) {
         dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
         dt
       })
+      
+      output$MZRT_graph_possibility <- renderUI({
+        HTML('<span style="color: #4372AA; font-weight: bold;">Graphic not 
+             available.</span>')
+      })
+      
+      output$MZRTSelectedPlot <- renderPlotly({NULL})
     }
     
     remove_modal_spinner()
@@ -614,11 +741,44 @@ server <- shinyServer(function(input, output) {
                             c(10,25,50,"All"))
         ),
         
-        class = "display"
+        class = "display",
+        filter = 'top'
       )
       
       dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
       dt
+    })
+    
+    output$compound_graph_possibility <- renderUI({
+      HTML('<span style="color: #4372AA; font-weight: bold;">Select rows 
+        from the table to display the intensity graph by samples.</span>')
+    })
+    
+    # Plot selected rows
+    output$compoundSelectedPlot <- renderPlotly({
+      selected <- input$summaryCompound_rows_selected
+      if (length(selected) == 0) return(NULL)
+      
+      names <- compoundResult[selected, 'Row.names']
+      
+      data_filtered <- data() %>%
+        filter(pull(., input$rowNamesColumn) %in% names)
+      samColumns <- as.numeric(
+        strsplit(input$samplesColumn, "-")[[1]]
+      )
+      data_filtered <- data_filtered[,c(input$rowNamesColumn,
+                                        samColumns[1]:samColumns[2])]
+      
+      transposed_data <- data_filtered %>%
+        pivot_longer(cols = -1, names_to = "Variable", values_to = "Valor")
+      colnames(transposed_data) <- c("Names", "Samples", "Value")
+      
+      plot_ly(transposed_data, x = ~Samples, y = ~Value, 
+              color = ~factor(Names), type = 'bar') %>%
+        layout(barmode = 'group',
+               xaxis = list(title = "Samples"),
+               yaxis = list(title = "Intensity"),
+               title = "Intensity of samples in selected rows")
     })
     
     remove_modal_spinner()
