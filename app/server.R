@@ -561,6 +561,97 @@ server <- shinyServer(function(input, output) {
   
   
   # Button search for compound list --------------------------------------------
+  # mz vs mz by formula:
+  dtCalculated <- NULL # To save the mz by formula.
+  
+  mz_plot <- reactive({
+    #mz_old = as.numeric(compoundData()[, input$compoundMzValueColumn])
+    charge <- as.numeric(input$chargeListMZ)
+    case_sensitive <- input$caseSensitiveListMZ
+    calculated_mz <- NULL
+    
+    for ( i in 1:length(compoundData()[,input$compoundFormulaColumn])){
+      calculated_mz[i] <- tryCatch(
+       {
+         result <- suppressWarnings(mz(
+           compoundData()[i, input$compoundFormulaColumn],
+           z = charge,
+           caseSensitive = case_sensitive
+         ))
+         if (is.na(result)) {
+           compoundData()[i, input$compoundMzValueColumn]
+         } else {
+           result
+         }
+       },
+       error = function(e) {
+         compoundData()[i, input$compoundMzValueColumn]
+       }
+     )
+    }
+    
+    dtCalculated <<- data.frame(
+     "ID" = compoundData()[, input$compoundRowNamesColumn],
+     "mz_old" = as.numeric(
+       gsub(",", ".", compoundData()[, input$compoundMzValueColumn])
+     ),
+     "mz_new" = as.numeric(
+       gsub(",", ".", calculated_mz)
+     )
+    )
+    
+    # Plot ----------------------
+    # Calculate linear regression
+    lm_model <- lm(mz_old ~ mz_new, data = dtCalculated)
+    
+    # Calculate R squared
+    r_squared <- summary(lm_model)$r.squared
+    
+    # Get intercept and slope
+    intercept <- coef(lm_model)[1]
+    slope <- coef(lm_model)[2]
+    
+    # Create the interactive chart with plotly
+    MZplot <- plot_ly(
+      data = dtCalculated, 
+      x = ~mz_new, 
+      y = ~mz_old, 
+      text = ~ID, 
+      name = "(mz_F, mz) ID",
+      type = 'scatter', 
+      mode = 'markers'
+    )
+    
+    # Add the regression line to the graph
+    MZplot <- add_trace(
+      MZplot, 
+      type = "scatter", 
+      mode = "lines",
+      x = dtCalculated$mz_new,
+      y = fitted(lm_model),
+      line = list(color = 'red'),
+      name = paste(
+        "R^2: ", 
+        format(r_squared, digits = 4), 
+        "<br>Intercept: ", 
+        format(intercept, digits = 4), 
+        "<br>Slope: ", 
+        format(slope, digits = 4))
+    )
+    
+    # Customize the chart layout
+    MZplot <- layout(MZplot, title = "Records of mz vs mz by formula",
+                     xaxis = list(title = "Mz by formula (mz_F)"),
+                     yaxis = list(title = "Records of mz (mz)"))
+    
+    MZplot
+  })
+  
+  output$mzCalculatedPlot <- renderPlotly({
+    mz_plot()  # Llamamos a la función reactivo dentro del renderPlotly
+  })
+  
+  
   # initialization of search parameters:
   searchMolCompound <- reactiveValues(
     frag = NULL,
@@ -601,11 +692,19 @@ server <- shinyServer(function(input, output) {
     
     for( i in 1:nrow(compoundData()) ){
       nameCompound <- compoundData()[i,input$compoundRowNamesColumn]
-      mzCompound <- as.numeric(
-        gsub(",", ".",compoundData()[i,input$compoundMzValueColumn])
-      )
+      if (input$mzByFormula){
+        mzCompound <- dtCalculated$mz_new[i]
+      }else{
+        mzCompound <- dtCalculated$mz_old[i]
+      }
       rtCompound <- compoundData()[i,input$compoundRtValueColumn]
+      if ( is.na(rtCompound) ){
+        rtCompound <- ""
+      }
       fragCompound <- compoundData()[i,input$compoundFragmentsColumn]
+      if ( is.na(fragCompound) ){
+        fragCompound <- ""
+      }
       
       if( rtCompound!="" & fragCompound=="" ){
         ## There is only one RT ------------------------------------------------
@@ -805,5 +904,6 @@ server <- shinyServer(function(input, output) {
       caseSensitive = caseSensitive_reactive()
     )
   })
+  
   
 })

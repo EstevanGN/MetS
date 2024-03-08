@@ -129,9 +129,17 @@ tab_compoundData <- tabPanel(
           ),
           
           numericInput(
+            "compoundFormulaColumn", 
+            "Formula:",
+            value = 3,
+            min = 1,
+            step = 1
+          ),
+          
+          numericInput(
             "compoundMzValueColumn",
             "m/z value:",
-            value = 3,
+            value = 5,
             min = 1,
             step = 1
           ),
@@ -139,7 +147,7 @@ tab_compoundData <- tabPanel(
           numericInput(
             "compoundRtValueColumn", 
             "RT value:",
-            value = 4,
+            value = 6,
             min = 1,
             step = 1
           ),
@@ -147,7 +155,7 @@ tab_compoundData <- tabPanel(
           numericInput(
             "compoundFragmentsColumn", 
             "Fragments:",
-            value = 5,
+            value = 7,
             min = 1,
             step = 1
           )

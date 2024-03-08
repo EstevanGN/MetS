@@ -6,11 +6,62 @@ tab_compoundSearch <- tabPanel(
       
       
       h1("Search compound list"),
+      
+      h2("What mz to use?"),
+      
+      fluidRow(
+        # Charge option -------------------------------------------------------------
+        column(
+          5,
+          radioButtons(
+            "chargeListMZ", 
+            h4("Charge:"),
+            c("1"=1,
+              "-1"=-1),
+            1
+          )
+        ),
+        
+        # caseSensitive option -------------------------------------------------
+        column(
+          5,
+          checkboxInput(
+            "caseSensitiveListMZ", 
+            h4("CaseSensitive"),
+            TRUE
+          )
+        ),
+      ),
+      
+      fluidRow(
+        p("", em("Charge"),": charge of the experiment.")
+      ),
+      
+      fluidRow(
+        p("", em("CaseSensitive"),": the elements of the compound formula 
+          are separated by upper case letters.")
+      ),
+      
+      fluidRow(
+        p("For more information, go to ", em("More tools/Calculate mz"), ".")
+      ),
+      
+      fluidRow(
+        # Mz of register or mz by formula --------------------------------------
+        column(
+          5,
+          checkboxInput(
+            "mzByFormula", 
+            p("Use mz by formula when possible."),
+            TRUE
+          )
+        )
+      ),
+      
+      
       h2("Parameters"),
       p("Choose the values of every parameter to obtain 
       a metabolomic search. Maximum precision allowed 10^-5."),
-      
-      
       
       fluidRow(
         # M/z interval option --------------------------------------------------
@@ -91,6 +142,15 @@ tab_compoundSearch <- tabPanel(
     
     
     mainPanel(
+      # Print mz vs formula mz -------------------------------------------------
+      h2("Choose mz calculated by formula or mz by file:"),
+      br(),
+      p("We present a scatter diagram for you to make an informed decision. 
+        Decide whether you want to search with the mz of the file or with 
+        the mz calculated by formula (when possible)."),
+      br(),
+      plotlyOutput("mzCalculatedPlot"),
+      
       # Print complete results -------------------------------------------------
       h1("Complete results:"),
       DTOutput(

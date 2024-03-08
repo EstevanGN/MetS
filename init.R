@@ -20,7 +20,7 @@ if(!require(shinybusy)){
 if(!require(MSbox)){
   install.packages("MSbox")
 }
-if(!require(MSbox)){
+if(!require(plotly)){
   install.packages("plotly")
 }
 
