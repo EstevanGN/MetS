@@ -1,5 +1,24 @@
 tab_compoundData <- tabPanel(
   "Compound Data",
+  
+  # CSS for reading table warnings
+  tags$head(
+    tags$style(
+      HTML("
+        #data_info_red {
+          color: red;
+        }
+        #data_info_green {
+          color: green;
+        }
+        #data_info_blue {
+          color: blue;
+        }
+      ")
+    )
+  ),
+  
+  
   sidebarLayout(
     sidebarPanel(
       
@@ -177,6 +196,10 @@ tab_compoundData <- tabPanel(
       # Present example of data format -----------------------------------------
       h3("Example of a data table format"),
       img(src = "Compound data example.png", height="100%", width="100%"),
+      
+      # Warnings uploading data ------------------------------------------------
+      h3("Warnings"),
+      uiOutput("data_infoCompounds"),
       
       # Present data uploaded --------------------------------------------------
       h1("Data Uploaded"),

@@ -1,5 +1,20 @@
 tab_metabolomicData <- tabPanel(
   "Metabolomic Data",
+  
+  # CSS for reading table warnings
+  tags$head(
+    tags$style(
+      HTML("
+        #data_info_red {
+          color: red;
+        }
+        #data_info_green {
+          color: green;
+        }
+      ")
+    )
+  ),
+  
   sidebarLayout(
     sidebarPanel(
       
@@ -127,21 +142,21 @@ tab_metabolomicData <- tabPanel(
           numericInput(
             "mzValueColumn", 
             "m/z value:",
-            value = 2,
+            value = 3,
             min = 1,
             step = 1
           ),
           numericInput(
             "rtValueColumn", 
             "RT value:",
-            value = 3,
+            value = 4,
             min = 1,
             step = 1
           ),
           textInput(
             "samplesColumn",
             "Samples:",
-            value = "4-187"
+            value = "6-100"
           )
         )
       ),
@@ -163,6 +178,10 @@ tab_metabolomicData <- tabPanel(
       # Present example of data format -----------------------------------------
       h3("Example of a data table format"),
       img(src = "Samples data example.png", height="100%", width="100%"),
+      
+      # Warnings uploading data ------------------------------------------------
+      h3("Warnings"),
+      uiOutput("data_info"),
       
       # Present data uploaded --------------------------------------------------
       h1("Data Uploaded"),
