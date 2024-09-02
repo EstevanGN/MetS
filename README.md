@@ -1,4 +1,4 @@
-# Metabolomic-search
+# MetS (Metabolomic-search)
 
 This is a first version to explore matabolomics data. To execute, you need to:
 
