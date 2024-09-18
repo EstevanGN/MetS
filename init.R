@@ -23,6 +23,9 @@ if(!require(MSbox)){
 if(!require(plotly)){
   install.packages("plotly")
 }
+if(!require(shinyjs)){
+  install.packages("shinyjs")
+}
 
 
 
@@ -35,6 +38,7 @@ library(shinyvalidate)  # Input validation
 library(shinybusy)      # App indicators
 library(MSbox)          # Calculate mz
 library(plotly)         # Plots
+library(shinyjs)        # Disable tabs until an event
 
 
 

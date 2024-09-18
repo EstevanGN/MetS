@@ -1,9 +1,7 @@
 server <- shinyServer(function(input, output) {
   
-  
-  
-  # Read sample data -----------------------------------------------------------
-  # For reading warnings
+  # Block Search compound tab --------------------------------------------------
+  # Create the reactive table (for reading warnings):
   data_state <- reactiveValues(
     data_info = "Error in data",
     data_size = 0,
@@ -11,7 +9,76 @@ server <- shinyServer(function(input, output) {
     mz_class = "None",
     rt_class = "None"
   )
+  # Monitors if the data was uploaded correctly
+  observe({
+    if (
+      data_state$data_info == "Data found" &
+      data_state$rowNames_class == "character" &
+      data_state$mz_class == "numeric" &
+      data_state$rt_class == "numeric"
+    ) {
+      # Enable the tab if it has data
+      shinyjs::enable(selector = "a:contains('Search compound')")
+    } else {
+      # Disable tab if there is no data
+      shinyjs::disable(selector = "a:contains('Search compound')")
+    }
+  })
   
+  
+  
+  # Block Search many compounds tab --------------------------------------------
+  # Create the reactive table (for reading warnings):
+  data_stateCompounds <- reactiveValues(
+    data_info = "Error in data",
+    data_size = 0,
+    rowNames_class = "None",
+    formula_class = "None",
+    mz_class = "None",
+    rt_class = "None",
+    fragments_class = "None"
+  )
+  # Monitors if the data was uploaded correctly:
+  observe({
+    if (
+      (data_state$data_info == "Data found" &
+      data_state$rowNames_class == "character" &
+      data_state$mz_class == "numeric" &
+      data_state$rt_class == "numeric") &
+      (data_stateCompounds$data_info == "Data found" &
+       data_stateCompounds$rowNames_class == "character" &
+       data_stateCompounds$formula_class == "character" &
+       data_stateCompounds$mz_class == "numeric" &
+       data_stateCompounds$rt_class %in% c("numeric", "logical")  &
+       data_stateCompounds$fragments_class == "character")
+    ) {
+      # Enable the tab if it has data
+      shinyjs::enable(selector = "a:contains('Search many compounds')")
+    } else {
+      # Disable tab if there is no data
+      shinyjs::disable(selector = "a:contains('Search many compounds')")
+    }
+  })
+  
+  
+  
+  # Block GNPS connection tab --------------------------------------------------
+  # Create the reactive table:
+  summaryCompoundData <- reactiveVal(NULL)
+  # Monitors if there is data in summaryCompoundData:
+  observe({
+    if (!is.null(summaryCompoundData())) {
+      # Enable the tab if it has data
+      shinyjs::enable(selector = "a:contains('GNPS connection')")
+    } else {
+      # Disable tab if there is no data
+      shinyjs::disable(selector = "a:contains('GNPS connection')")
+    }
+  })
+  
+  
+  
+  # Read sample data -----------------------------------------------------------
   data <- reactive({
     req(input$mainFile,
         input$header,
@@ -181,17 +248,6 @@ server <- shinyServer(function(input, output) {
   
   
   # Read compound data ---------------------------------------------------------
-  # For reading warnings
-  data_stateCompounds <- reactiveValues(
-    data_info = "Error in data",
-    data_size = 0,
-    rowNames_class = "None",
-    formula_class = "None",
-    mz_class = "None",
-    rt_class = "None",
-    fragments_class = "None"
-  )
-  
   compoundData <- reactive({
     req(input$compoundFile,
         input$compoundHeader,
@@ -858,7 +914,8 @@ server <- shinyServer(function(input, output) {
   
   
   # Button search for compound list --------------------------------------------
-  # mz vs mz by formula:
+  
+  ## mz vs mz by formula -------------------------------------------------------
   dtCalculated <- NULL # To save the mz by formula.
   
   mz_plot <- reactive({
@@ -897,7 +954,7 @@ server <- shinyServer(function(input, output) {
      )
     )
     
-    # Plot ----------------------
+    ### Plot -------------------------------------------------------------------
     # Calculate linear regression
     lm_model <- lm(mz_old ~ mz_new, data = dtCalculated)
     
@@ -1076,6 +1133,7 @@ server <- shinyServer(function(input, output) {
         
       }else{
         ## In other case -------------------------------------------------------
+        
         # ( Without RT and without fragments,
         # With RT and with fragments,
         # Only with fragments)
@@ -1156,7 +1214,8 @@ server <- shinyServer(function(input, output) {
       )
       
       dt$x$data[[1]] <- as.numeric(dt$x$data[[1]]) 
-      dt
+      summaryCompoundData(dt)
+      summaryCompoundData()
     })
     
     output$compound_graph_possibility <- renderUI({
